@@ -1,0 +1,13 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+.env
+
+# Databases & Vectorstores (Veda's Memory)
+memory/*.db
+memory/vectorstore/
+logs/
+notes/
+persona/veda_profile.json
+FIRST_WORDS.txt
