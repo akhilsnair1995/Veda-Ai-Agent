@@ -21,50 +21,49 @@ SESSION_ID = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 def print_welcome():
-    """High-fidelity Veda branding and status dashboard."""
+    """Industrial ANSI Veda branding and status dashboard."""
     from rich.table import Table
     from rich.columns import Columns
     from rich.text import Text
     
-    # 1. Sophisticated Neem Leaf ASCII
-    leaf_ascii = r"""
-[bold green]      __[/bold green]
-[bold green]  _  /  \  _ [/bold green]
-[bold green] ( \/    \/ )[/bold green]
-[bold green]  \ serrated / [/bold green]
-[bold green]   \  leaf  /  [/bold green]
-[bold green]    \    /   [/bold green]
-[bold green]     \__/    [/bold green]
+    # 1. High-Impact ANSI Block Text
+    # Font: 'Slant' style representation
+    veda_ansi = r"""
+[bold magenta]   _   __  ______   ____    ___ [/bold magenta]
+[bold magenta]  | | / / / ____/  / __ \  /   |[/bold magenta]
+[bold magenta]  | |/ / / __/    / / / / / /| |[/bold magenta]
+[bold magenta]  |   / / /___   / /_/ / / ___ |[/bold magenta]
+[bold magenta]  |__/ /_____/  /_____/ /_/  |_|[/bold magenta]
 """
     
     # 2. Branding Text
     branding_text = Text.assemble(
-        ("\n  V  E  D  A\n", "bold white on magenta"),
-        ("  Independent MEP Intelligence\n", "italic dim"),
-        ("  Industrializing Engineering Design\n", "bold cyan")
+        ("\n  INDUSTRIALIZING ENGINEERING DESIGN\n", "bold white"),
+        ("  Independent MEP Intelligence System\n", "italic dim cyan"),
+        ("  Precision MEP Framework 1.0\n", "bold magenta")
     )
 
     # 3. Status Table
     status_table = Table(show_header=False, border_style="dim", box=None)
-    status_table.add_row("[bold cyan]VERSION[/bold cyan]", "1.0.0-PRO")
-    status_table.add_row("[bold cyan]MODEL[/bold cyan]", "Qwen 2.5 32B (Colab)")
-    status_table.add_row("[bold cyan]RUNTIME[/bold cyan]", "100% Offline / Private")
-    status_table.add_row("[bold cyan]MEMORY[/bold cyan]", "SQLite + ChromaDB Sync")
+    status_table.add_row("[bold magenta]CORE[/bold magenta]", "[white]STRICT-FACTUAL[/white]")
+    status_table.add_row("[bold magenta]MODEL[/bold magenta]", "Qwen 2.5 32B (Remote)")
+    status_table.add_row("[bold magenta]SYNC[/bold magenta]", "[green]CONNECTED[/green]")
+    status_table.add_row("[bold magenta]LOCAL[/bold magenta]", "SQLite + ChromaDB")
 
     # Layout Assembly
-    header_table = Table(show_header=False, box=None, padding=(0, 2))
-    header_table.add_row(leaf_ascii, branding_text, status_table)
+    header_table = Table(show_header=False, box=None, padding=(0, 4))
+    header_table.add_row(veda_ansi, branding_text, status_table)
 
     console.print("\n")
     console.print(header_table)
     console.print(Panel.fit(
-        "[green]Available Modules:[/green]\n"
-        "  [yellow]/notes[/yellow]     — Knowledge Base      [yellow]/search[/yellow]    — Deep Search\n"
-        "  [yellow]/clear[/yellow]     — Reset Interface     [yellow]/exit[/yellow]      — Secure Shutdown\n\n"
-        "[bold green]System Status:[/bold green] [blink]● ONLINE[/blink] | [dim]Wisdom logic verified.[/dim]",
-        title="[bold white]VEDA CORE INTERFACE[/bold white]",
+        "[green]Control Interface:[/green]\n"
+        "  [yellow]/notes[/yellow]     — Review Engineering Logic      [yellow]/search[/yellow]    — Deep Compliance Search\n"
+        "  [yellow]/clear[/yellow]     — Refresh Terminal              [yellow]/exit[/yellow]      — System Shutdown\n\n"
+        "[bold cyan]Mission Status:[/bold cyan] [blink]READY[/blink] | [dim]Industrializing MEP production via high-fidelity logic.[/dim]",
+        title="[bold white]VEDA OPERATIONAL INTERFACE[/bold white]",
         border_style="magenta",
-        subtitle="[dim]Session ID: " + SESSION_ID + "[/dim]"
+        subtitle="[dim]Secure Session: " + SESSION_ID + "[/dim]"
     ))
     console.print("\n")
 
