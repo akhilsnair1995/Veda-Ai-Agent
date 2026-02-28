@@ -110,7 +110,7 @@ def handle_special_commands(user_input: str, brain: AIBrain) -> bool:
 
 
 @click.command()
-@click.option('--model', default='qwen2.5:14b', help='Ollama model to use')
+@click.option('--model', default='qwen2.5:32b', help='Ollama model to use')
 def main(model):
     init_database()
     brain = AIBrain(model=model)

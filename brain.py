@@ -35,7 +35,7 @@ PARAMS: 2021 VMC Section 401.4 intake opening separation distances
 """
 
 class AIBrain:
-    def __init__(self, model: str = "qwen2.5:14b"):
+    def __init__(self, model: str = "qwen2.5:32b"):
         self.model = model
         # Connect to your remote Ollama host (Colab Tunnel)
         self.client = ollama.Client(host="https://five-treasurer-barbie-bristol.trycloudflare.com/")
