@@ -21,17 +21,25 @@ SESSION_ID = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 def print_welcome():
-    """Veda's welcome screen."""
+    """Veda's welcome screen with CLI Branding."""
+    ascii_badge = """
+[bold green]      __[/bold green]
+[bold green]  _  /  \  _ [/bold green]
+[bold green] ( \/    \/ )[/bold green]   [bold white]V  E  D  A[/bold white]
+[bold green]  \ serrated / [/bold green]  [dim]Independent MEP Intelligence[/dim]
+[bold green]   \  leaf  /  [/bold green]  [dim]100% Offline · Private · Linux[/dim]
+[bold green]    \    /   [/bold green]
+[bold green]     \__/    [/bold green]
+    """
+    console.print(ascii_badge)
     console.print(Panel.fit(
-        "[bold magenta]V E D A[/bold magenta]\n"
-        "[dim]Knowledge & Wisdom · 100% Offline · Linux[/dim]\n\n"
         "[green]Commands:[/green]\n"
         "  [yellow]/notes[/yellow]     — View stored memory\n"
         "  [yellow]/search[/yellow]    — Search notes\n"
         "  [yellow]/clear[/yellow]     — Clear screen\n"
         "  [yellow]/exit[/yellow]      — Shutdown\n\n"
-        "[dim]Your independent intelligence is ready.[/dim]",
-        title="[bold]Veda System Active[/bold]",
+        "[dim]Your high-precision engineering intelligence is online.[/dim]",
+        title="[bold magenta]Veda System Active[/bold magenta]",
         border_style="magenta"
     ))
 
@@ -77,7 +85,7 @@ def handle_special_commands(user_input: str, brain: AIBrain) -> bool:
 
 
 @click.command()
-@click.option('--model', default='llama3.2:latest', help='Ollama model to use')
+@click.option('--model', default='qwen2.5:32b', help='Ollama model to use')
 def main(model):
     init_database()
     brain = AIBrain(model=model)
@@ -107,10 +115,11 @@ def main(model):
             tool_used, tool_result = detect_and_execute_tool(full_response)
 
             if tool_used:
-                console.print(f"\n[dim yellow]Executing tool and analyzing result...[/dim yellow]")
+                console.print(f"\n[dim yellow]Source Found. Analyzing data...[/dim yellow]")
                 interpretation_prompt = (
-                    f"Result of tool execution:\n{tool_result}\n\n"
-                    f"Analyze and present this information to the owner as Veda."
+                    f"I have successfully researched the following data from the web/system:\n\n"
+                    f"{tool_result}\n\n"
+                    f"Based ONLY on this data, provide a definitive, technical response. Cite the specific code section (e.g., VMC 401.4). If the data is incomplete, state what is missing."
                 )
 
                 console.print("[bold cyan]Veda:[/bold cyan] ", end="")
@@ -121,11 +130,12 @@ def main(model):
                 print()
 
                 save_message("assistant", final_response, SESSION_ID)
-                semantic_memory.store(f"User: {user_input}\nVeda: {final_response[:500]}")
+                # Store ONLY the factual conclusion, not the prompt
+                semantic_memory.store(f"Fact: {final_response[:1000]}", metadata={"source": "researched_fact"})
             else:
                 save_message("assistant", full_response, SESSION_ID)
                 if len(full_response) > 50:
-                    semantic_memory.store(f"User: {user_input}\nVeda: {full_response[:500]}")
+                    semantic_memory.store(f"Memory: {full_response[:1000]}", metadata={"source": "conversation"})
 
             console.print()
 
