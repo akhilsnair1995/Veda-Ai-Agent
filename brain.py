@@ -26,21 +26,16 @@ DEFINITIONS:
 - ICC: International Code Council (Model Codes).
 - VUSBC: Virginia Uniform Statewide Building Code.
 - VMC: Virginia Mechanical Code (Based on 2021 IMC).
-
-Example:
-User: What is the intake opening distance?
-Veda: <thought>The user is asking for a specific clearance distance for mechanical air intakes under the VMC. I do not have the exact 2021 VMC text for this in my immediate memory. I must search.</thought>
-TOOL: search_web
-PARAMS: 2021 VMC Section 401.4 intake opening separation distances
 """
 
 class AIBrain:
     def __init__(self, model: str = "qwen2.5:32b"):
         self.model = model
-        # Connect to your LOCAL Ollama host
-        self.client = ollama.Client(host="http://localhost:11434")
+        # Connect to your KAGGLE remote host
+        # REPLACE THIS URL with the one from Kaggle output
+        self.client = ollama.Client(host="https://five-treasurer-barbie-bristol.trycloudflare.com/")
         self.semantic_memory = SemanticMemory()
-        print(f"✓ Veda's Brain (Local) active: {model}")
+        print(f"✓ Veda's Brain (Kaggle Dual-T4) active: {model}")
 
     def think(self, user_message: str) -> str:
         relevant_memories = self.semantic_memory.search(user_message, top_k=3)
@@ -62,7 +57,7 @@ class AIBrain:
             response = self.client.chat(
                 model=self.model,
                 messages=messages,
-                options={"temperature": 0.0, "num_ctx": 8192}
+                options={"temperature": 0.0, "num_ctx": 16384}
             )
             return response['message']['content']
         except Exception as e:
@@ -89,7 +84,7 @@ class AIBrain:
                 model=self.model,
                 messages=messages,
                 stream=True,
-                options={"temperature": 0.0, "num_ctx": 8192}
+                options={"temperature": 0.0, "num_ctx": 16384}
             )
             for chunk in stream:
                 yield chunk['message']['content']
