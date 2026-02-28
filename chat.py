@@ -24,6 +24,7 @@ def print_welcome():
     """High-fidelity Veda branding and status dashboard."""
     from rich.table import Table
     from rich.columns import Columns
+    from rich.text import Text
     
     # 1. Sophisticated Neem Leaf ASCII
     leaf_ascii = r"""
