@@ -21,27 +21,51 @@ SESSION_ID = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 def print_welcome():
-    """Veda's welcome screen with CLI Branding."""
-    ascii_badge = r"""
+    """High-fidelity Veda branding and status dashboard."""
+    from rich.table import Table
+    from rich.columns import Columns
+    
+    # 1. Sophisticated Neem Leaf ASCII
+    leaf_ascii = r"""
 [bold green]      __[/bold green]
 [bold green]  _  /  \  _ [/bold green]
-[bold green] ( \/    \/ )[/bold green]   [bold white]V  E  D  A[/bold white]
-[bold green]  \ serrated / [/bold green]  [dim]Independent MEP Intelligence[/dim]
-[bold green]   \  leaf  /  [/bold green]  [dim]100% Offline · Private · Linux[/dim]
+[bold green] ( \/    \/ )[/bold green]
+[bold green]  \ serrated / [/bold green]
+[bold green]   \  leaf  /  [/bold green]
 [bold green]    \    /   [/bold green]
 [bold green]     \__/    [/bold green]
-    """
-    console.print(ascii_badge)
+"""
+    
+    # 2. Branding Text
+    branding_text = Text.assemble(
+        ("\n  V  E  D  A\n", "bold white on magenta"),
+        ("  Independent MEP Intelligence\n", "italic dim"),
+        ("  Industrializing Engineering Design\n", "bold cyan")
+    )
+
+    # 3. Status Table
+    status_table = Table(show_header=False, border_style="dim", box=None)
+    status_table.add_row("[bold cyan]VERSION[/bold cyan]", "1.0.0-PRO")
+    status_table.add_row("[bold cyan]MODEL[/bold cyan]", "Qwen 2.5 32B (Colab)")
+    status_table.add_row("[bold cyan]RUNTIME[/bold cyan]", "100% Offline / Private")
+    status_table.add_row("[bold cyan]MEMORY[/bold cyan]", "SQLite + ChromaDB Sync")
+
+    # Layout Assembly
+    header_table = Table(show_header=False, box=None, padding=(0, 2))
+    header_table.add_row(leaf_ascii, branding_text, status_table)
+
+    console.print("\n")
+    console.print(header_table)
     console.print(Panel.fit(
-        "[green]Commands:[/green]\n"
-        "  [yellow]/notes[/yellow]     — View stored memory\n"
-        "  [yellow]/search[/yellow]    — Search notes\n"
-        "  [yellow]/clear[/yellow]     — Clear screen\n"
-        "  [yellow]/exit[/yellow]      — Shutdown\n\n"
-        "[dim]Your high-precision engineering intelligence is online.[/dim]",
-        title="[bold magenta]Veda System Active[/bold magenta]",
-        border_style="magenta"
+        "[green]Available Modules:[/green]\n"
+        "  [yellow]/notes[/yellow]     — Knowledge Base      [yellow]/search[/yellow]    — Deep Search\n"
+        "  [yellow]/clear[/yellow]     — Reset Interface     [yellow]/exit[/yellow]      — Secure Shutdown\n\n"
+        "[bold green]System Status:[/bold green] [blink]● ONLINE[/blink] | [dim]Wisdom logic verified.[/dim]",
+        title="[bold white]VEDA CORE INTERFACE[/bold white]",
+        border_style="magenta",
+        subtitle="[dim]Session ID: " + SESSION_ID + "[/dim]"
     ))
+    console.print("\n")
 
 
 def handle_special_commands(user_input: str, brain: AIBrain) -> bool:
