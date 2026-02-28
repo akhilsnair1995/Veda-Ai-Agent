@@ -37,10 +37,10 @@ PARAMS: 2021 VMC Section 401.4 intake opening separation distances
 class AIBrain:
     def __init__(self, model: str = "qwen2.5:32b"):
         self.model = model
-        # Connect to your remote Ollama host (Colab Tunnel)
-        self.client = ollama.Client(host="https://five-treasurer-barbie-bristol.trycloudflare.com/")
+        # Connect to your LOCAL Ollama host
+        self.client = ollama.Client(host="http://localhost:11434")
         self.semantic_memory = SemanticMemory()
-        print(f"✓ Veda's Brain (Qwen 14B - Optimized) active: {model}")
+        print(f"✓ Veda's Brain (Local) active: {model}")
 
     def think(self, user_message: str) -> str:
         relevant_memories = self.semantic_memory.search(user_message, top_k=3)
