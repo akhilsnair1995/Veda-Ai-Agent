@@ -22,7 +22,7 @@ SESSION_ID = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 def print_welcome():
     """Veda's welcome screen with CLI Branding."""
-    ascii_badge = """
+    ascii_badge = r"""
 [bold green]      __[/bold green]
 [bold green]  _  /  \  _ [/bold green]
 [bold green] ( \/    \/ )[/bold green]   [bold white]V  E  D  A[/bold white]
