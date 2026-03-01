@@ -41,6 +41,11 @@ class VedaUI:
 
     def print_header(self):
         """High-fidelity ANSI Veda branding and status dashboard."""
+        # Set Terminal Title
+        if os.name == 'nt':
+            os.system("title Veda🧠Ready")
+        else:
+            print("\033]2;Veda🧠Ready\007", end="", flush=True)
         
         # 1. Branding Text
         branding_text = Text.assemble(
