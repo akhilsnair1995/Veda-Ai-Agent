@@ -1,4 +1,18 @@
 {
+    "mcp_category_mappings": [
+        {
+            "category": "web",
+            "server": "web",
+            "primary_tool": "search",
+            "description": "Use 'search' for all web queries. Do NOT use 'web'."
+        },
+        {
+            "category": "filesystem",
+            "server": "filesystem",
+            "primary_tool": "list_directory",
+            "description": "Use 'list_directory', 'read_file', 'write_file', 'edit_file'."
+        }
+    ],
     "mcp_tool_schemas": [
         {
             "server": "filesystem",

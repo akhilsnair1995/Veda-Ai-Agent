@@ -184,24 +184,44 @@ class MCPServerManager:
     def call_tool(self, tool_name: str, params: dict) -> str:
         """
         Route a tool call to the correct MCP server.
-        Handles reconnection automatically if server died.
+        Includes a Fuzzy Router to handle common category-level hallucinations.
         """
-        # Find which server handles this tool
-        server_name = self.tool_routing.get(tool_name)
+        # 1. Fuzzy Routing Logic
+        fuzzy_map = {
+            "web": "web__search",
+            "code": "code__run_python",
+            "filesystem": "filesystem__list_directory",
+            "pdf": "document__read_pdf",
+            "chart": "visualization__generate_chart",
+            "plot": "visualization__generate_chart",
+            "calc": "simulation__calc_psychrometrics"
+        }
+        
+        target_tool = tool_name.lower().strip()
+        if target_tool in fuzzy_map:
+            console.print(f"[dim yellow]Fuzzy routing '{target_tool}' -> '{fuzzy_map[target_tool]}'[/dim yellow]")
+            target_tool = fuzzy_map[target_tool]
+
+        # 2. Standard Routing
+        server_name = self.tool_routing.get(target_tool)
         if not server_name:
-            return f"No MCP server found for tool: {tool_name}"
+            # Check if it was provided without prefix but is in routing
+            if target_tool in self.tool_routing:
+                server_name = self.tool_routing[target_tool]
+            else:
+                return f"No MCP server found for tool: {tool_name}"
 
         client = self.clients.get(server_name)
         if not client:
             return f"MCP server '{server_name}' not connected"
 
         # Strip server prefix if present
-        clean_name = tool_name.replace(f"{server_name}__", "")
+        clean_name = target_tool.replace(f"{server_name}__", "")
 
         try:
             return client.call_tool(clean_name, params)
         except Exception as e:
-            return f"MCP tool error ({tool_name}): {e}"
+            return f"MCP tool error ({target_tool}): {e}"
 
     def get_all_tool_schemas(self) -> list[dict]:
         """Return schemas for all available tools across all servers."""

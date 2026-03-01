@@ -136,6 +136,11 @@ class VedaBrain:
                                   ", ".join([f"{t['name']}({', '.join(t['params'])})" for t in tools])
                         if examples:
                             content += "\nEXAMPLES:\n" + "\n".join(examples)
+                    elif category == "mcp_category_mappings":
+                        # Handle category mapping
+                        cat = item.get('category', 'unknown')
+                        tool = item.get('primary_tool', 'unknown')
+                        content = f"[MAPPING] Category '{cat}' is handled by tool: '{tool}'. {item.get('description', '')}"
                     else:
                         # Handle the topic/content structure
                         topic = item.get('topic', 'General')
