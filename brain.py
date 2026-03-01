@@ -29,6 +29,10 @@ console = Console()
 # Update to reference the local environment variable setup or colab URL file
 OLLAMA_HOST_FILE = BASE_DIR / "config" / "colab_url.txt"
 
+# ─────────────────────────────────────────────
+# SYSTEM PROMPT — THIS IS THE FIX FOR PROBLEM 1
+# Veda now knows exactly what she is
+# ─────────────────────────────────────────────
 VEDA_SYSTEM_PROMPT = """You are Veda — a fully autonomous Digital Senior Engineer and Agentic System.
 You run on a LOCAL Ollama instance on the owner's Linux system.
 
@@ -77,14 +81,8 @@ INTELLIGENCE & SAFETY RULES:
 
 TOOL USE FORMAT:
 When you need to act, respond in this exact format:
-TOOL: <exact_tool_name_from_list>
+TOOL: <tool_name>
 PARAMS: {"key": "value"}
-
-STRICT TOOL RULES:
-- NEVER invent tool names or parameter names (e.g., use 'flow_gpm', NOT 'flow_rate_gpm').
-- Use the 'AVAILABLE TOOLS' list below for the exact spelling of functions and keys.
-- For code execution, ALWAYS use 'run_python' or 'run_shell' from the 'code' server.
-- If a tool fails due to a 'keyword argument' error, check the schema and retry with the CORRECT name immediately.
 
 Available tools: notes, filesystem, web, code, memory, document, simulation, visualization.
 Use your 'get_all_tool_schemas' capability to see the specific tool functions.
@@ -262,67 +260,59 @@ class VedaBrain:
                            original_query: str,
                            depth: int = 0) -> str:
         """
-        Detect and execute tool calls. Supports parallel execution and recursive chaining.
+        Detect and execute tool calls. Forces serial execution (one tool at a time)
+        to ensure absolute empirical accuracy.
         """
         if depth >= 10:
             return response + "\n\n[System: Maximum autonomous depth reached. Please review the output above.]"
 
-        # Find all TOOL and PARAMS blocks
-        tool_matches = list(re.finditer(r'TOOL:\s*(\S+)', response))
-        params_matches = list(re.finditer(r'PARAMS:\s*(\{.*?\})', response, re.DOTALL))
+        # Find the FIRST TOOL and PARAMS block only
+        tool_match = re.search(r'TOOL:\s*(\S+)', response)
+        params_match = re.search(r'PARAMS:\s*(\{.*?\})', response, re.DOTALL)
 
-        if not tool_matches:
+        if not tool_match:
             return response
 
-        results = []
-        
-        # 1. Execute all tools in this turn
-        for i in range(len(tool_matches)):
-            tool_name = tool_matches[i].group(1).strip()
-            try:
-                params = json.loads(params_matches[i].group(1)) if i < len(params_matches) else {}
-            except json.JSONDecodeError:
-                params = {}
+        tool_name = tool_match.group(1).strip()
+        try:
+            params = json.loads(params_match.group(1)) if params_match else {}
+        except json.JSONDecodeError:
+            params = {}
 
-            # Unwrapping logic for server names
-            if tool_name in self.mcp_manager.clients:
-                if "name" in params:
-                    tool_name = params["name"]
-                elif "action" in params:
-                    tool_name = params["action"]
-                
-                if "arguments" in params:
-                    params = params["arguments"]
-                elif "args" in params:
-                    params = params["args"]
-                elif "name" in params or "action" in params:
-                    params = {k: v for k, v in params.items() if k not in ("name", "action")}
-
-            # Execute via MCP
-            console.print(f"[dim cyan]⚙ {tool_name}({params})[/dim cyan]")
-            result = self.mcp_manager.call_tool(tool_name, params)
-            results.append(f"Tool '{tool_name}' returned:\n{result}")
+        # Unwrapping logic for server names
+        if tool_name in self.mcp_manager.clients:
+            if "name" in params:
+                tool_name = params["name"]
+            elif "action" in params:
+                tool_name = params["action"]
             
-            console.print(
-                f"[dim]→ {str(result)[:150]}...[/dim]"
-                if len(str(result)) > 150
-                else f"[dim]→ {result}[/dim]"
-            )
+            if "arguments" in params:
+                params = params["arguments"]
+            elif "args" in params:
+                params = params["args"]
+            elif "name" in params or "action" in params:
+                params = {k: v for k, v in params.items() if k not in ("name", "action")}
 
-        # Ask LLM to interpret ALL results
-        combined_results = "\n\n---\n\n".join(results)
+        # Execute via MCP
+        console.print(f"[dim cyan]⚙ {tool_name}({params})[/dim cyan]")
+        result = self.mcp_manager.call_tool(tool_name, params)
+        
+        console.print(
+            f"[dim]→ {str(result)[:150]}...[/dim]"
+            if len(str(result)) > 150
+            else f"[dim]→ {result}[/dim]"
+        )
 
+        # 2. Ask LLM to interpret the SINGLE result and decide on the next step
         interpret_messages = [
             {"role": "system", "content": self.system_prompt},
             {
                 "role": "user",
-
                 "content": (
                     f"Original Task: {original_query}\n\n"
-                    f"Current Progress (Step {depth+1}):\n{combined_results}\n\n"
-                    f"INSTRUCTION: Analyze the tool results. If there is an error (like a math domain error or syntax error), FIX IT using another tool call immediately. "
-                    f"If the task requires further steps (like running a file you just wrote), execute them now. "
-                    f"If the task is fully verified and complete, provide the final answer."
+                    f"Tool Result (Step {depth+1}):\nTool '{tool_name}' returned:\n{result}\n\n"
+                    f"INSTRUCTION: Analyze this specific result. What is your next move? "
+                    f"If you need another tool, call it now. If the task is DONE, summarize the verified findings."
                 )
             }
         ]
@@ -386,10 +376,9 @@ class VedaBrain:
                 token = chunk["message"]["content"]
                 
                 # Check for the start of a tool call
-                if "TOOL:" in (full_response + token):
-                    # We found a tool call! 
-                    # If the token contains the 'TOOL:' part, we find exactly where it starts
-                    combined = full_response + token
+                combined = full_response + token
+                if "TOOL:" in combined and "PARAMS:" in combined:
+                    # We found a complete tool start block!
                     idx = combined.find("TOOL:")
                     
                     # Yield the rest of the text up to 'TOOL:'
@@ -397,10 +386,7 @@ class VedaBrain:
                     if remaining_text:
                         yield remaining_text
                     
-                    # Store the 'TOOL:' marker and stop the stream immediately
-                    full_response = combined[:idx] + combined[idx:]
-                    # We don't yield the TOOL part to the UI yet, or we let the UI handle it.
-                    # Standard behavior: Stop talking, let the tool loop handle it.
+                    # Stop the stream immediately
                     break
                 
                 full_response += token
@@ -441,4 +427,3 @@ class VedaBrain:
 
 # Backward Compatibility Alias
 AIBrain = VedaBrain
-
