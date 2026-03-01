@@ -239,6 +239,8 @@ class MCPServerManager:
 
         try:
             return client.call_tool(clean_name, params)
+        except Exception as e:
+            return f"MCP tool error ({target_tool}): {e}"
 
     def get_all_tool_schemas(self) -> list[dict]:
         """Return schemas for all available tools across all servers."""
