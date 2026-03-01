@@ -82,6 +82,7 @@ class VedaUI:
         help_table.add_column("Command", style="yellow")
         help_table.add_column("Description", style="dim")
         
+        help_table.add_row("/model <name>", "Switch underlying Ollama model")
         help_table.add_row("/notes", "Review Engineering Logic & Saved Notes")
         help_table.add_row("/search <query>", "Deep Compliance Search in Notes")
         help_table.add_row("/skills", "List and Manage Veda's Expert Skills")
@@ -96,7 +97,17 @@ class VedaUI:
         cmd_parts = user_input.strip().split(" ", 1)
         cmd = cmd_parts[0].lower()
 
-        if cmd == "/notes":
+        if cmd == "/model":
+            if len(cmd_parts) < 2:
+                self.console.print(f"[yellow]Current model: {self.brain.model}[/yellow]")
+                return True
+            new_model = cmd_parts[1].strip()
+            self.console.print(f"[bold yellow]Switching model to {new_model}...[/bold yellow]")
+            self.brain.model = new_model
+            self.console.print(f"[bold green]✓ Model active.[/bold green]")
+            return True
+
+        elif cmd == "/notes":
             notes = get_all_notes()
             if not notes:
                 self.console.print("[yellow]Memory is currently empty.[/yellow]")

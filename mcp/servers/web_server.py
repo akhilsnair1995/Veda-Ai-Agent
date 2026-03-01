@@ -1,9 +1,6 @@
 # mcp/servers/web_server.py
 import sys
-import requests
 import json
-from bs4 import BeautifulSoup
-from duckduckgo_search import DDGS
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -14,6 +11,7 @@ server = MCPServer(name="web", version="1.0.0")
 
 def search(query: str, max_results: int = 5) -> str:
     try:
+        from duckduckgo_search import DDGS
         results = []
         with DDGS() as ddgs:
             results_gen = ddgs.text(query, max_results=max_results)
@@ -32,6 +30,8 @@ def search(query: str, max_results: int = 5) -> str:
 
 def fetch_page(url: str, extract_text: bool = True) -> str:
     try:
+        import requests
+        from bs4 import BeautifulSoup
         response = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
         response.raise_for_status()
         if not extract_text:
@@ -47,6 +47,7 @@ def fetch_page(url: str, extract_text: bool = True) -> str:
 
 def fetch_json(url: str, headers: dict = None) -> str:
     try:
+        import requests
         response = requests.get(url, headers=headers or {}, timeout=15)
         response.raise_for_status()
         return json.dumps(response.json(), indent=2)[:5000]
@@ -55,6 +56,7 @@ def fetch_json(url: str, headers: dict = None) -> str:
 
 def download_file(url: str, save_path: str) -> str:
     try:
+        import requests
         p = Path(save_path)
         p.parent.mkdir(parents=True, exist_ok=True)
         response = requests.get(url, stream=True, timeout=30)
@@ -68,6 +70,7 @@ def download_file(url: str, save_path: str) -> str:
 
 def check_url(url: str) -> str:
     try:
+        import requests
         response = requests.head(url, timeout=5)
         return f"Status Code: {response.status_code}\nAccessible: {response.ok}"
     except Exception as e:
@@ -75,6 +78,8 @@ def check_url(url: str) -> str:
 
 def extract_links(url: str) -> str:
     try:
+        import requests
+        from bs4 import BeautifulSoup
         response = requests.get(url, timeout=10)
         soup = BeautifulSoup(response.text, 'html.parser')
         links = []

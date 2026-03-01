@@ -1,30 +1,31 @@
 servers:
-  notes:
-    command: ["python", "mcp/servers/notes_server.py"]
-    enabled: true
-    description: "Veda's personal notes system"
-  
-  filesystem:
-    command: ["python", "mcp/servers/filesystem_server.py"]  
-    enabled: true
-    description: "File system operations"
-  
-  web:
-    command: ["python", "mcp/servers/web_server.py"]
-    enabled: true
-    description: "Web search and fetch"
-  
   code:
-    command: ["python", "mcp/servers/code_server.py"]
+    command:
+    - C:\Users\akhil\veda_agent\venv_win\Scripts\python.exe
+    - C:\Users\akhil\veda_agent\mcp\servers\code_server.py
+    description: Code execution and analysis
     enabled: true
-    description: "Code execution and analysis"
-    
+  filesystem:
+    command:
+    - C:\Users\akhil\veda_agent\venv_win\Scripts\python.exe
+    - C:\Users\akhil\veda_agent\mcp\servers\filesystem_server.py
+    description: File system operations
+    enabled: true
   memory:
-    command: ["python", "mcp/servers/memory_server.py"]
+    command:
+    - C:\Users\akhil\veda_agent\venv_win\Scripts\python.exe
+    - C:\Users\akhil\veda_agent\mcp\servers\memory_server.py
+    description: Veda's memory system
     enabled: true
-    description: "Veda's memory system"
-
-  # Add custom servers here:
-  # my_custom_server:
-  #   command: ["python", "mcp/servers/my_server.py"]
-  #   enabled: true
+  notes:
+    command:
+    - C:\Users\akhil\veda_agent\venv_win\Scripts\python.exe
+    - C:\Users\akhil\veda_agent\mcp\servers\notes_server.py
+    description: Veda's personal notes system
+    enabled: true
+  web:
+    command:
+    - C:\Users\akhil\veda_agent\venv_win\Scripts\python.exe
+    - C:\Users\akhil\veda_agent\mcp\servers\web_server.py
+    description: Web search and fetch
+    enabled: true

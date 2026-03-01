@@ -51,8 +51,8 @@ class MCPServerManager:
     def _create_default_config(self):
         """Create the default MCP server config."""
         CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-        # Assuming python executable is 'python'
-        python_exec = "python"
+        # Use the current python executable (virtual environment)
+        python_exec = sys.executable
         
         default = {
             "servers": {

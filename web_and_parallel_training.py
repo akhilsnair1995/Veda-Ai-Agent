@@ -34,11 +34,8 @@ def run_web_training():
     log_file.parent.mkdir(parents=True, exist_ok=True)
     
     with open(log_file, "w", encoding="utf-8") as f:
-        f.write("=== VEDA WEB & PARALLEL AGENT TRAINING ===
-")
-        f.write(f"Started at: {datetime.now()}
-
-")
+        f.write("=== VEDA WEB & PARALLEL AGENT TRAINING ===\n")
+        f.write(f"Started at: {datetime.now()}\n\n")
     
     print(f"Initializing Veda Brain for Web & Parallelism training...")
     print(f"Logging to: {log_file}")
@@ -46,36 +43,26 @@ def run_web_training():
     brain = VedaBrain(model="qwen2.5:7b")
     
     for i, prompt in enumerate(curriculum):
-        print(f"
-[Progress: {i+1}/{len(curriculum)}] Teaching Lesson {i+1}...")
+        print(f"\n[Progress: {i+1}/{len(curriculum)}] Teaching Lesson {i+1}...")
         
         with open(log_file, "a", encoding="utf-8") as f:
-            f.write(f"================================================================================
-")
-            f.write(f"TEACHER [Turn {i+1}/{len(curriculum)}]:
-")
-            f.write(prompt + "
-")
-            f.write(f"================================================================================
-
-")
+            f.write(f"================================================================================\n")
+            f.write(f"TEACHER [Turn {i+1}/{len(curriculum)}]:\n")
+            f.write(prompt + "\n")
+            f.write(f"================================================================================\n\n")
         
         start_time = time.time()
         response = brain.think(prompt)
         elapsed = time.time() - start_time
         
         with open(log_file, "a", encoding="utf-8") as f:
-            f.write(f"VEDA (Processing Time: {elapsed:.2f}s):
-")
-            f.write(response + "
-
-")
+            f.write(f"VEDA (Processing Time: {elapsed:.2f}s):\n")
+            f.write(response + "\n\n")
             
         print(f"✓ Lesson {i+1} absorbed. ({elapsed:.2f}s)")
         time.sleep(2)
 
-    print("
-✓ Web & Parallel Agent training complete.")
+    print("\n✓ Web & Parallel Agent training complete.")
 
 if __name__ == '__main__':
     run_web_training()
