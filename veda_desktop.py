@@ -5,6 +5,8 @@ import time
 import uuid
 import re
 import sys
+import tkinter as tk
+from tkinter import filedialog
 from pathlib import Path
 from datetime import datetime
 from PIL import Image
@@ -26,6 +28,18 @@ from memory.history import (
     toggle_pin_session
 )
 from memory.semantic import SemanticMemory
+
+def select_folder():
+    """Trigger a native OS folder selection dialog."""
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        path = filedialog.askdirectory(master=root)
+        root.destroy()
+        return path
+    except:
+        return None
 
 # Page Configuration
 st.set_page_config(
@@ -129,30 +143,20 @@ if st.session_state.current_session_id == "NEW" or st.session_state.current_sess
     with st.container(border=True):
         session_title = st.text_input("Project/Session Title:", placeholder="e.g., Hospital HVAC Load Study")
         
-        # Universal Browser for Path Selection
+        # Native Browser for Path Selection
         st.write("#### Select Working Directory")
-        col_path, col_btn = st.columns([0.8, 0.2])
-        with col_path:
-            # Display current path and allow manual editing
-            selected_path = st.text_input("Active Path:", st.session_state.workspace_path)
-            if selected_path != st.session_state.workspace_path:
-                if os.path.isdir(selected_path):
-                    st.session_state.workspace_path = str(Path(selected_path).resolve())
-                    st.rerun()
-        with col_btn:
-            if st.button("⬆️ Parent"):
-                st.session_state.workspace_path = str(Path(st.session_state.workspace_path).parent)
-                st.rerun()
         
-        # Directory Browse
-        try:
-            dirs = [d for d in os.listdir(st.session_state.workspace_path) if os.path.isdir(os.path.join(st.session_state.workspace_path, d))]
-            for d in sorted(dirs)[:10]:
-                if st.button(f"📁 {d}", key=f"setup_nav_{d}"):
-                    st.session_state.workspace_path = str(Path(st.session_state.workspace_path) / d)
-                    st.rerun()
-        except:
-            st.error("Invalid path or access denied.")
+        if st.button("📁 Browse System Folders...", use_container_width=True):
+            native_path = select_folder()
+            if native_path:
+                st.session_state.workspace_path = str(Path(native_path).resolve())
+                st.rerun()
+
+        selected_path = st.text_input("Active Path:", st.session_state.workspace_path)
+        if selected_path != st.session_state.workspace_path:
+            if os.path.isdir(selected_path):
+                st.session_state.workspace_path = str(Path(selected_path).resolve())
+                st.rerun()
 
         if st.button("🚀 Launch Veda Agent", type="primary", use_container_width=True):
             new_id = str(uuid.uuid4())
