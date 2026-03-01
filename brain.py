@@ -252,11 +252,10 @@ class VedaBrain:
                            original_query: str,
                            depth: int = 0) -> str:
         """
-        Detect and execute tool calls. Supports parallel tool execution
-        within a single turn and recursive chaining up to 5 levels.
+        Detect and execute tool calls. Supports parallel execution and recursive chaining.
         """
-        if depth >= 5:
-            return response + "\n\n[System: Maximum tool depth reached.]"
+        if depth >= 10:
+            return response + "\n\n[System: Maximum autonomous depth reached. Please review the output above.]"
 
         # Find all TOOL and PARAMS blocks
         tool_matches = list(re.finditer(r'TOOL:\s*(\S+)', response))
@@ -294,7 +293,6 @@ class VedaBrain:
             result = self.mcp_manager.call_tool(tool_name, params)
             results.append(f"Tool '{tool_name}' returned:\n{result}")
             
-            # Log result for the console
             console.print(
                 f"[dim]→ {str(result)[:150]}...[/dim]"
                 if len(str(result)) > 150
@@ -309,10 +307,11 @@ class VedaBrain:
             {
                 "role": "user",
                 "content": (
-                    f"Original task: {original_query}\n\n"
-                    f"The following tools were executed:\n{combined_results}\n\n"
-                    f"Analyze these results. If more tools are needed, call them. "
-                    f"If done, provide the final answer."
+                    f"Original Task: {original_query}\n\n"
+                    f"Current Progress (Step {depth+1}):\n{combined_results}\n\n"
+                    f"INSTRUCTION: Analyze the tool results. If there is an error (like a math domain error or syntax error), FIX IT using another tool call immediately. "
+                    f"If the task requires further steps (like running a file you just wrote), execute them now. "
+                    f"If the task is fully verified and complete, provide the final answer."
                 )
             }
         ]
@@ -325,7 +324,6 @@ class VedaBrain:
         
         next_response = final["message"]["content"]
         
-        # RECURSIVE CHECK: If the new response has another TOOL call, loop.
         if "TOOL:" in next_response:
             return self._handle_tool_calls(next_response, original_query, depth + 1)
             
