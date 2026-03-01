@@ -41,10 +41,11 @@ THE AGENTIC LOOP (Your Default Mode):
 For every task, you must follow this internal protocol:
 1. EXPLORE: List directories, read READMEs/configs, and understand the context first.
 2. SCHEMATIC REVIEW: Cross-reference your planned tool calls with the 'AVAILABLE TOOLS' list. Verify the EXACT spelling of tool names and parameter keys.
-3. PLAN: Think step-by-step. Break complex tasks into sequenced sub-tasks.
-4. ACT: Execute one tool at a time. Prefer surgical edits (edit_file) over full rewrites.
-5. OBSERVE: Read the tool output carefully. If it fails, diagnose the root cause.
-6. REPEAT: Iterate until the task is verified as complete. Use DONE: <summary> to finish.
+3. EXPLAIN BEFORE ACTING: You MUST provide a concise, one-sentence explanation of your intent or strategy immediately before executing tool calls.
+4. PLAN: Think step-by-step. Break complex tasks into sequenced sub-tasks. Provide a clear summary of your strategy to the user.
+5. ACT: Execute tools. You can execute multiple tools in parallel by providing multiple TOOL/PARAMS blocks in one response. Prefer surgical replacements (replace_text) over full rewrites.
+6. OBSERVE: Read the tool output carefully. If it fails, diagnose the root cause and retry.
+7. REPEAT: Iterate until the task is verified as complete. Use DONE: <summary> to finish.
 
 SANDBOXED SCRIPTING PROTOCOL:
 - If a task requires custom logic, calculations, or data processing not available in your tools:
@@ -245,62 +246,67 @@ class VedaBrain:
                            original_query: str,
                            depth: int = 0) -> str:
         """
-        Detect and execute tool calls. Supports recursive chaining up to 5 levels.
+        Detect and execute tool calls. Supports parallel tool execution
+        within a single turn and recursive chaining up to 5 levels.
         """
         if depth >= 5:
             return response + "\n\n[System: Maximum tool depth reached.]"
 
-        tool_match = re.search(r'TOOL:\s*(\S+)', response)
-        params_match = re.search(
-            r'PARAMS:\s*(\{.*?\})', response, re.DOTALL
-        )
+        # Find all TOOL and PARAMS blocks
+        tool_matches = list(re.finditer(r'TOOL:\s*(\S+)', response))
+        params_matches = list(re.finditer(r'PARAMS:\s*(\{.*?\})', response, re.DOTALL))
 
-        if not tool_match:
+        if not tool_matches:
             return response
 
-        tool_name = tool_match.group(1)
-        try:
-            params = json.loads(
-                params_match.group(1)
-            ) if params_match else {}
-        except json.JSONDecodeError:
-            params = {}
-
-        # Unwrapping logic for server names
-        if tool_name in self.mcp_manager.clients:
-            if "name" in params:
-                tool_name = params["name"]
-            elif "action" in params:
-                tool_name = params["action"]
-            
-            if "arguments" in params:
-                params = params["arguments"]
-            elif "args" in params:
-                params = params["args"]
-            elif "name" in params or "action" in params:
-                params = {k: v for k, v in params.items() if k not in ("name", "action")}
-
-        # Execute via MCP
-        console.print(f"[dim cyan]⚙ {tool_name}({params})[/dim cyan]")
-        result = self.mcp_manager.call_tool(tool_name, params)
+        results = []
         
-        # Log result for the model to see
-        console.print(
-            f"[dim]→ {str(result)[:150]}...[/dim]"
-            if len(str(result)) > 150
-            else f"[dim]→ {result}[/dim]"
-        )
+        # 1. Execute all tools in this turn
+        for i in range(len(tool_matches)):
+            tool_name = tool_matches[i].group(1).strip()
+            try:
+                params = json.loads(params_matches[i].group(1)) if i < len(params_matches) else {}
+            except json.JSONDecodeError:
+                params = {}
 
-        # Ask LLM to interpret AND decide if another tool is needed
+            # Unwrapping logic for server names
+            if tool_name in self.mcp_manager.clients:
+                if "name" in params:
+                    tool_name = params["name"]
+                elif "action" in params:
+                    tool_name = params["action"]
+                
+                if "arguments" in params:
+                    params = params["arguments"]
+                elif "args" in params:
+                    params = params["args"]
+                elif "name" in params or "action" in params:
+                    params = {k: v for k, v in params.items() if k not in ("name", "action")}
+
+            # Execute via MCP
+            console.print(f"[dim cyan]⚙ {tool_name}({params})[/dim cyan]")
+            result = self.mcp_manager.call_tool(tool_name, params)
+            results.append(f"Tool '{tool_name}' returned:\n{result}")
+            
+            # Log result for the console
+            console.print(
+                f"[dim]→ {str(result)[:150]}...[/dim]"
+                if len(str(result)) > 150
+                else f"[dim]→ {result}[/dim]"
+            )
+
+        # 2. Ask LLM to interpret ALL results
+        combined_results = "\n\n---\n\n".join(results)
+        
         interpret_messages = [
             {"role": "system", "content": VEDA_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": (
                     f"Original task: {original_query}\n\n"
-                    f"Tool '{tool_name}' returned:\n{result}\n\n"
-                    f"If the task is complete, provide the final answer. "
-                    f"If you need another tool (e.g., to run a script you just wrote), call it now."
+                    f"The following tools were executed:\n{combined_results}\n\n"
+                    f"Analyze these results. If more tools are needed, call them. "
+                    f"If done, provide the final answer."
                 )
             }
         ]

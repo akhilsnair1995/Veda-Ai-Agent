@@ -121,29 +121,37 @@ def delete_file(path: str, confirm: bool = False) -> str:
         return f"Deleted {path}"
     except Exception as e:
         return f"Error deleting file: {e}"
-
-def edit_file(path: str, old: str, new: str) -> str:
+def edit_file(path: str = None, old: str = None, new: str = None, file_path: str = None) -> str:
     """Surgical text replacement in a file."""
+    path = path or file_path
     try:
         p = _resolve_and_verify(path)
         if not p.exists():
             return f"File not found: {path}"
         content = p.read_text(encoding="utf-8")
-        
+
         if old not in content:
             return f"ERROR: Exact text to replace not found in {path}. Ensure 'old' string matches exactly."
-        
+
         count = content.count(old)
         if count > 1:
             return f"ERROR: Found {count} occurrences of the text. Please provide more context to make the replacement unique."
-            
+
         new_content = content.replace(old, new)
         p.write_text(new_content, encoding="utf-8")
         return f"Successfully edited {path}. Replaced 1 occurrence."
     except Exception as e:
         return f"Error editing file: {e}"
 
+def replace_text(path: str, old_string: str, new_string: str) -> str:
+    """
+    High-precision replacement tool. 
+    Requires the exact old_string to be replaced with new_string.
+    """
+    return edit_file(path=path, old=old_string, new=new_string)
+
 def get_file_info(path: str) -> str:
+
     try:
         p = _resolve_and_verify(path)
         if not p.exists():
@@ -176,6 +184,9 @@ server.add_tool("delete_file", "Delete a file or directory",
 
 server.add_tool("edit_file", "Surgical text replacement in a file",
     {"type": "object", "properties": {"path": {"type": "string"}, "old": {"type": "string"}, "new": {"type": "string"}}, "required": ["path", "old", "new"]}, edit_file)
+
+server.add_tool("replace_text", "High-precision text replacement tool. Requires exact match of context.",
+    {"type": "object", "properties": {"path": {"type": "string"}, "old_string": {"type": "string"}, "new_string": {"type": "string"}}, "required": ["path", "old_string", "new_string"]}, replace_text)
 
 server.add_tool("get_file_info", "Get file metadata",
     {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}, get_file_info)

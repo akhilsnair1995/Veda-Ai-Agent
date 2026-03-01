@@ -306,13 +306,18 @@ class VedaUI:
     def run_tool_cycle(self, full_response: str, user_input: str):
         """Execute tools and handle re-interpretation with status indicators."""
         if "TOOL:" in full_response:
-            with self.console.status("[bold yellow]Executing MCP Tool...", spinner="dots"):
-                # Use the brain's built-in tool handler to execute and interpret
-                final_response = self.brain._handle_tool_calls(full_response, user_input)
-                self.console.print(f"\n[bold cyan]Veda[/bold cyan] [dim](Verified) >[/dim] {final_response}\n")
-                
-                save_message("assistant", final_response, self.session_id)
-                self.semantic_memory.store(f"Fact: {final_response[:1000]}", metadata={"source": "tool_result"})
+            # Use the brain's built-in tool handler to execute and interpret
+            final_response = self.brain._handle_tool_calls(full_response, user_input)
+            
+            self.console.print(Panel(
+                final_response,
+                title="[bold green]Final Observation[/bold green]",
+                border_style="green",
+                padding=(1, 2)
+            ))
+            
+            save_message("assistant", final_response, self.session_id)
+            self.semantic_memory.store(f"Fact: {final_response[:1000]}", metadata={"source": "tool_result"})
         else:
             save_message("assistant", full_response, self.session_id)
             if len(full_response) > 50:
