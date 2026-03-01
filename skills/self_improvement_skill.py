@@ -35,9 +35,7 @@ Do not include placeholders.
 """
 
     def execute(self, user_message: str, context: dict, brain: any) -> SkillResult:
-        prompt = f"The user is teaching you a new capability. Draft the complete Python skill file based on this request:
-
-{user_message}"
+        prompt = "The user is teaching you a new capability. Draft the complete Python skill file based on this request:\n\n" + user_message
         
         messages = [
             {"role": "system", "content": self.get_context()},
@@ -54,9 +52,7 @@ Do not include placeholders.
             
             # If the brain object has a create_skill method (as defined in PART 9), we can auto-save it!
             # Let's extract the python code.
-            python_code_match = re.search(r'```python
-(.*?)
-```', content, re.DOTALL)
+            python_code_match = re.search(r'```python\n(.*?)\n```', content, re.DOTALL)
             if python_code_match and hasattr(brain, 'create_skill'):
                 code = python_code_match.group(1)
                 
@@ -70,9 +66,7 @@ Do not include placeholders.
                         filename = filename.replace(".py", "_skill.py")
                         
                     brain.create_skill(code, filename)
-                    content += f"
-
-[System: Successfully extracted and saved new skill to {filename}]"
+                    content += "\n\n[System: Successfully extracted and saved new skill to " + filename + "]"
             
             return SkillResult(success=True, output=content)
             

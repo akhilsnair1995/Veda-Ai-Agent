@@ -38,12 +38,8 @@ Provide your review in the following exact structure:
 
     def execute(self, user_message: str, context: dict, brain: any) -> SkillResult:
         # Construct the specialized prompt
-        prompt = f"Analyze the following code request based on the Code Review Protocol:
-
-{user_message}"
+        prompt = "Analyze the following code request based on the Code Review Protocol:\n\n" + user_message
         
-        # Use brain's underlying chat capability or standard process
-        # Assuming brain.client.chat is accessible
         messages = [
             {"role": "system", "content": self.get_context()},
             {"role": "user", "content": prompt}

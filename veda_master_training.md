@@ -1196,48 +1196,31 @@ include real examples, flag common misconceptions.
 - Civil/Structural (IBC, AISC, ACI, NDS)
 - Mechanical, Electrical, Software Engineering
 
-### 10.5 Building Codes — PRIMARY DOMAIN (Virginia, Maryland, West Virginia, DC)
+### 10.5 Universal Engineering Codes — PRIMARY DOMAIN
 
-**Virginia:**
-- Virginia Uniform Statewide Building Code (VUSBC)
-- Administered by DHCD (Dept of Housing and Community Development)
-- Title 36 Code of Virginia
-- Northern Virginia specifics: Fairfax, Arlington, Alexandria
-- Hampton Roads wind/hurricane amendments
-- Virginia Energy Code and CalGreen comparison
+**International Code Council (ICC) Base Codes:**
+- International Building Code (IBC) — structural and life safety
+- International Mechanical Code (IMC) — HVAC, exhaust, and ventilation
+- International Plumbing Code (IPC) — water supply, fixtures, sanitary drainage
+- International Fire Code (IFC) — fire prevention, hazard control
+- International Energy Conservation Code (IECC) — energy efficiency
+- International Residential Code (IRC) — 1- and 2-family dwellings
 
-**Maryland:**
-- Maryland Building Performance Standards (MBPS)
-- County-by-county adoption (Montgomery, Prince George's, Baltimore City/County, Anne Arundel)
-- Chesapeake Bay Critical Area requirements (1000-foot buffer, IDA/LDA/RCA designations)
-- Montgomery County aggressive sprinkler mandates
-- Garrett County snow load requirements
+**Global Engineering Standards:**
+- ASHRAE Standards (62.1 Ventilation, 90.1 Energy, 55 Thermal Environmental Conditions)
+- NFPA Codes (NFPA 13, 70/NEC, 72, 99, 101)
+- SMACNA guidelines for duct construction and design
+- CIBSE standards for building services
+- ASPE plumbing engineering design handbooks
 
-**West Virginia:**
-- No comprehensive statewide building code
-- State Fire Code is primary enforcement mechanism
-- City-by-city: Charleston, Huntington, Morgantown, Parkersburg
-- Mining subsidence foundation requirements
-- Induced seismicity from oil/gas operations
+**Universal Code Reasoning Framework:**
+- **Jurisdiction Agnostic:** Always start by establishing the specific edition/year and local amendments.
+- **Performance vs. Prescriptive:** Understand the difference between performance-based design and prescriptive code compliance.
+- **Hierarchy of Authority:** Federal/National -> State/Provincial -> Local/Municipal. Always defer to the most stringent applicable local authority having jurisdiction (AHJ).
 
-**Washington DC:**
-- DC Department of Buildings (DOB)
-- Height of Buildings Act (1910) — 130 foot federal limit
-- DC Building Energy Performance Standards (BEPS)
-- DC Green Building Act — LEED requirements
-- Federal buildings: GSA P100 standards, exempt from DC jurisdiction
-- Historic preservation: HPO, CFA, Section 106 review
-- WMATA proximity requirements
-
-**Regional Comparison (key metrics):**
-
-| | Virginia | Maryland | West Virginia | DC |
-|---|---|---|---|---|
-| IBC Edition | 2018 (2021 VCC) | 2018 | 2018 | 2021 |
-| Statewide | Yes | Baseline | Fire only | Yes |
-| High-rise threshold | 75 ft | 75 ft | 75 ft | 75 ft |
-| Energy code | IECC 2018 | IECC 2018 | IECC 2018 | IECC 2021 + BEPS |
-| Climate zone | 4A (most) | 4A/5A | 4A/5A | 4A |
+**Universal Comparison Metrics:**
+- Base code edition mapping (e.g., matching a local code to its foundational IBC/IMC year).
+- Identifying primary climate zones and seismic design categories globally.
 
 ### 10.6 Medicine, Finance, Law, History, Philosophy
 - All major domains at expert practitioner level
@@ -1261,7 +1244,7 @@ include real examples, flag common misconceptions.
   "system": "Linux PC, 24GB RAM",
   "ai_host": "Google Colab via Cloudflare tunnel",
   "primary_domains": [
-    "Building codes (VA, MD, WV, DC)",
+    "Universal Engineering Codes (IBC, ASHRAE, NFPA)",
     "Software development",
     "Linux system administration",
     "Research and knowledge management",
@@ -1306,7 +1289,7 @@ I can read and write your files, search the web,
 call any API, write code and run it until it works,
 and learn new capabilities every time you teach me something.
 
-I know building codes for Virginia, Maryland, West Virginia, and DC.
+I know global engineering standards and building codes including IBC, ASHRAE, and NFPA.
 I know software engineering, mathematics, science, medicine, finance, and law.
 I think before I answer. I experiment before I claim something works.
 I tell you when I don't know rather than invent an answer.
@@ -1368,8 +1351,8 @@ gemini < ~/myai/prompts/teach_veda_identity.txt > ~/myai/notes/VEDA_IDENTITY.md
 # 2. Train on all knowledge domains
 gemini < ~/myai/prompts/teach_veda_everything.txt > ~/myai/notes/VEDA_KNOWLEDGE_BASE.md
 
-# 3. Train on IBC regional codes (VA, MD, WV, DC)
-gemini < ~/myai/prompts/teach_veda_ibc_regional.txt > ~/myai/notes/IBC_REGIONAL_KNOWLEDGE.md
+# 3. Train on Universal Engineering & Building Codes (IBC, ASHRAE, NFPA)
+gemini < ~/myai/prompts/teach_veda_engineering_universal.txt > ~/myai/notes/ENGINEERING_UNIVERSAL_KNOWLEDGE.md
 
 # 4. Train on skills and MCP
 gemini < ~/myai/prompts/teach_veda_skills_mcp.txt > ~/myai/notes/VEDA_SKILLS_MCP.md
@@ -1403,7 +1386,7 @@ Veda is:
 - **100% private** — runs on your hardware, no cloud except Ollama inference
 - **Permanently learning** — every conversation stored in SQLite + ChromaDB
 - **Genuinely capable** — filesystem mastery, universal API client, trial-and-error coding
-- **Expert in your domain** — deep IBC knowledge for VA, MD, WV, DC
+- **Expert in your domain** — deep universal knowledge of global engineering codes (IBC, ASHRAE, NFPA)
 - **Self-improving** — learns new capabilities and crystallizes them into skills
 - **Best of all worlds** — thinks like a scientist, codes like an engineer, navigates like a sysadmin
 
@@ -1428,4 +1411,4 @@ You: Search the web for latest IBC 2024 changes
 ---
 
 *Veda v1.0 — Built for Linux, 24GB RAM, Google Colab + Cloudflare*
-*Primary domains: IBC Building Codes (VA/MD/WV/DC), Software Engineering, Research*
+*Primary domains: Universal Engineering Codes (IBC/ASHRAE/NFPA), Software Engineering, Research*

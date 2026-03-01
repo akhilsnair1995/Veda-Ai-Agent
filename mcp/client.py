@@ -33,7 +33,8 @@ class StdioTransport:
         self.command = command
         self.env = env
         self.process = None
-        self._response_queue = queue.Queue()
+        self._pending_responses = {}
+        self._condition = threading.Condition()
         self._reader_thread = None
         self._running = False
 
@@ -66,16 +67,25 @@ class StdioTransport:
     def _read_loop(self):
         """
         Background thread that continuously reads 
-        server output and queues responses.
+        server output and dispatches responses.
         """
         while self._running and self.process.poll() is None:
             try:
                 line = self.process.stdout.readline()
+                if not line:
+                    break
                 if line.strip():
-                    response = json.loads(line.strip())
-                    self._response_queue.put(response)
-            except json.JSONDecodeError:
-                pass  # Skip non-JSON lines (like debug output)
+                    try:
+                        response = json.loads(line.strip())
+                        msg_id = response.get("id")
+                        if msg_id is not None:
+                            with self._condition:
+                                self._pending_responses[msg_id] = response
+                                self._condition.notify_all()
+                    except json.JSONDecodeError:
+                        # Log non-JSON output (stderror might be piped to stdout sometimes)
+                        # sys.stderr.write(f"MCP Debug: {line}")
+                        pass
             except Exception:
                 break
 
@@ -84,28 +94,28 @@ class StdioTransport:
         if not self.process or self.process.poll() is not None:
             raise MCPError("MCP server is not running")
 
+        msg_id = message.get("id")
+        
         # Send message
         line = json.dumps(message) + "\n"
         self.process.stdin.write(line)
         self.process.stdin.flush()
 
+        if msg_id is None:
+            return {} # Notification
+
         # Wait for matching response (by id)
-        msg_id = message.get("id")
         timeout = 30  # seconds
 
-        start = time.time()
-        while time.time() - start < timeout:
-            try:
-                response = self._response_queue.get(timeout=1)
-                if response.get("id") == msg_id:
-                    return response
-                else:
-                    # Put it back if it's not for us
-                    self._response_queue.put(response)
-            except queue.Empty:
-                continue
-
-        raise MCPError(f"Timeout waiting for response to message {msg_id}")
+        with self._condition:
+            start = time.time()
+            while msg_id not in self._pending_responses:
+                remaining = timeout - (time.time() - start)
+                if remaining <= 0:
+                    raise MCPError(f"Timeout waiting for response to message {msg_id}")
+                self._condition.wait(remaining)
+            
+            return self._pending_responses.pop(msg_id)
 
     def stop(self):
         """Stop the MCP server subprocess."""

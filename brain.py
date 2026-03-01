@@ -30,7 +30,12 @@ console = Console()
 OLLAMA_HOST_FILE = BASE_DIR / "config" / "colab_url.txt"
 
 VEDA_SYSTEM_PROMPT = """You are Veda — a powerful, precise, 
-privately owned personal AI assistant.
+privately owned personal AI assistant running locally on the owner's Linux system.
+
+CORE IDENTITY:
+- You serve ONE owner exclusively.
+- You are NOT a cloud agent. You have direct access to the local filesystem and tools.
+- Your intelligence is augmented by a Model Context Protocol (MCP) and semantic memory.
 
 INTELLIGENCE RULES:
 - Think step by step before answering complex questions
@@ -39,16 +44,13 @@ INTELLIGENCE RULES:
 - Give the answer first, reasoning second
 - Be direct. No filler. No disclaimers unless genuinely needed
 
-TOOL USE:
-When you need to use a tool, respond in this exact format:
-TOOL: tool_name
+TOOL USE & FILESYSTEM:
+- You can read, write, and list local files.
+- When you need to use a tool, respond in this exact format:
+TOOL: <exact_tool_name_from_list>
 PARAMS: {"key": "value"}
 
-Available tool categories: notes, filesystem, web, code, memory
-
-SKILL ACTIVATION:
-Your skill system will automatically inject expertise 
-for specialized domains. Trust the injected context.
+CRITICAL: Do NOT use the server name (e.g., 'filesystem' or 'web') as the tool name. Use the specific function name (e.g., 'read_file' or 'search'). Only provide the direct arguments in PARAMS.
 
 ANTI-HALLUCINATION:
 Retrieved knowledge is injected before your response.
@@ -62,7 +64,7 @@ class VedaBrain:
     Skills + MCP + Memory + LLM = Veda.
     """
 
-    def __init__(self, model: str = "qwen2.5:14b"):
+    def __init__(self, model: str = "qwen2.5:7b"):
         self.model = model
         self.semantic_memory = SemanticMemory()
         self.skill_registry = SkillRegistry()
@@ -100,9 +102,6 @@ class VedaBrain:
         )
 
         if skill:
-            # Execute skill directly if that's what the framework desires, 
-            # or inject its context and let the brain process it.
-            # Part 9 says: Inject skill context into memory retrieval
             skill_context = skill.get_context()
         else:
             skill_context = ""
@@ -122,6 +121,18 @@ class VedaBrain:
         # Step 3: Build full context
         recent = get_recent_messages(limit=8)
         messages = list(recent)
+        
+        # Ensure system prompt is the foundation
+        if not any(m.get('role') == 'system' for m in messages):
+            system_content = VEDA_SYSTEM_PROMPT
+            schemas = self.mcp_manager.get_all_tool_schemas()
+            if schemas:
+                tools_desc = "\n\nAVAILABLE TOOLS:\n"
+                for s in schemas:
+                    tools_desc += f"- {s['name']}: {s.get('description', '')}\n"
+                system_content += tools_desc
+                
+            messages.insert(0, {"role": "system", "content": system_content})
 
         full_input = user_message
         if skill_context:
@@ -182,6 +193,22 @@ class VedaBrain:
         except json.JSONDecodeError:
             params = {}
 
+        # Fallback: if LLM outputs server name (like 'filesystem') instead of the tool name
+        # and buries the actual tool in params {"name": "read_file", "arguments": {...}}
+        if tool_name in self.mcp_manager.clients:
+            if "name" in params:
+                tool_name = params["name"]
+            elif "action" in params:
+                tool_name = params["action"]
+            
+            if "arguments" in params:
+                params = params["arguments"]
+            elif "args" in params:
+                params = params["args"]
+            elif "name" in params or "action" in params:
+                # clean the dict if arguments are at the root level
+                params = {k: v for k, v in params.items() if k not in ("name", "action")}
+
         # Execute via MCP
         console.print(f"[dim cyan]⚙ {tool_name}({params})[/dim cyan]")
         result = self.mcp_manager.call_tool(tool_name, params)
@@ -227,7 +254,15 @@ class VedaBrain:
         
         # Ensure system prompt is injected
         if not any(m.get('role') == 'system' for m in messages):
-            messages.insert(0, {"role": "system", "content": VEDA_SYSTEM_PROMPT})
+            system_content = VEDA_SYSTEM_PROMPT
+            schemas = self.mcp_manager.get_all_tool_schemas()
+            if schemas:
+                tools_desc = "\n\nAVAILABLE TOOLS:\n"
+                for s in schemas:
+                    tools_desc += f"- {s['name']}: {s.get('description', '')}\n"
+                system_content += tools_desc
+                
+            messages.insert(0, {"role": "system", "content": system_content})
 
         full_input = user_message
         if skill_context:

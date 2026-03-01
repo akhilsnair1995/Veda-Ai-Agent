@@ -14,27 +14,25 @@ server = MCPServer(name="code", version="1.0.0")
 
 def run_python(code: str, timeout: int = 10) -> str:
     # Sandboxed execution using a temporary file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-        f.write(code)
-        temp_path = f.name
-    
+    fd, temp_path = tempfile.mkstemp(suffix='.py')
     try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(code)
+        
         result = subprocess.run(
             [sys.executable, temp_path],
             capture_output=True,
             text=True,
             timeout=timeout
         )
-        output = f"STDOUT:
-{result.stdout}
-STDERR:
-{result.stderr}"
+        output = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
     except subprocess.TimeoutExpired:
         output = f"Error: Execution timed out after {timeout} seconds."
     except Exception as e:
         output = f"Execution error: {e}"
     finally:
-        os.unlink(temp_path)
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
     
     return output
 
@@ -56,11 +54,7 @@ def run_shell(command: str, timeout: int = 10, confirm: bool = False) -> str:
             text=True,
             timeout=timeout
         )
-        return f"Exit Code: {result.returncode}
-STDOUT:
-{result.stdout}
-STDERR:
-{result.stderr}"
+        return f"Exit Code: {result.returncode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
     except subprocess.TimeoutExpired:
         return "Error: Shell command timed out."
     except Exception as e:
@@ -85,8 +79,7 @@ def lint_python(filepath: str) -> str:
 def format_python(filepath: str) -> str:
     try:
         result = subprocess.run(["black", filepath], capture_output=True, text=True)
-        return f"Formatter output:
-{result.stderr}" # black logs to stderr
+        return f"Formatter output:\n{result.stderr}" # black logs to stderr
     except Exception as e:
         return f"Format error (ensure black is installed): {e}"
 
@@ -100,10 +93,7 @@ def analyze_file(filepath: str) -> str:
         imports = [node.names[0].name for node in ast.walk(tree) if isinstance(node, ast.Import)]
         from_imports = [f"{node.module} ({node.names[0].name})" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
         
-        return f"File: {filepath}
-Classes: {', '.join(classes)}
-Functions: {', '.join(functions)}
-Imports: {', '.join(imports + from_imports)}"
+        return f"File: {filepath}\nClasses: {', '.join(classes)}\nFunctions: {', '.join(functions)}\nImports: {', '.join(imports + from_imports)}"
     except Exception as e:
         return f"Analysis error: {e}"
 
@@ -123,8 +113,7 @@ def search_code(directory: str, query: str, language: str = "*") -> str:
                                 matches.append(f"{path}:{i+1} - {line.strip()}")
                 except UnicodeDecodeError:
                     pass
-        return "
-".join(matches[:50]) if matches else "No matches found."
+        return "\n".join(matches[:50]) if matches else "No matches found."
     except Exception as e:
         return f"Search error: {e}"
 

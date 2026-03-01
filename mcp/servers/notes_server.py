@@ -1,12 +1,10 @@
 # mcp/servers/notes_server.py
 import sys
-from pathlib import Path
-
-# Setup path so we can import from veda_agent packages like memory.history if needed, 
-# or just use sqlite directly here. We will use sqlite directly to ensure it acts as an independent MCP server.
 import sqlite3
+from pathlib import Path
 from datetime import datetime
 
+# Setup path so we can import from veda_agent packages
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
 from mcp.server_base import MCPServer
@@ -18,7 +16,6 @@ def _init_db():
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    # Assuming standard table from memory.history, or we create our own notes table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,11 +87,8 @@ def search_notes(query: str) -> str:
     
     output = []
     for title, content in results:
-        output.append(f"Title: {title}
-Preview: {content[:100]}...
----")
-    return "
-".join(output)
+        output.append(f"Title: {title}\nPreview: {content[:100]}...\n---")
+    return "\n".join(output)
 
 def list_notes(tag: str = None) -> str:
     conn = sqlite3.connect(DB_PATH)
@@ -107,8 +101,7 @@ def list_notes(tag: str = None) -> str:
     conn.close()
     if not results:
         return "No notes found."
-    return "
-".join([f"- {t} (Tags: {tg})" for t, tg in results])
+    return "\n".join([f"- {t} (Tags: {tg})" for t, tg in results])
 
 def append_to_note(title: str, content: str) -> str:
     conn = sqlite3.connect(DB_PATH)
@@ -116,8 +109,7 @@ def append_to_note(title: str, content: str) -> str:
     cursor.execute("SELECT content FROM notes WHERE title = ?", (title,))
     result = cursor.fetchone()
     if result:
-        new_content = result[0] + "
-" + content
+        new_content = result[0] + "\n" + content
         cursor.execute("UPDATE notes SET content = ?, updated_at = CURRENT_TIMESTAMP WHERE title = ?", (new_content, title))
         conn.commit()
         conn.close()
@@ -125,7 +117,6 @@ def append_to_note(title: str, content: str) -> str:
     conn.close()
     return f"Note '{title}' not found."
 
-# Resources
 def get_all_notes():
     return list_notes()
 
@@ -135,10 +126,8 @@ def get_recent_notes():
     cursor.execute("SELECT title FROM notes ORDER BY updated_at DESC LIMIT 10")
     results = cursor.fetchall()
     conn.close()
-    return "
-".join([f"- {r[0]}" for r in results])
+    return "\n".join([f"- {r[0]}" for r in results])
 
-# Register tools
 server.add_tool("create_note", "Create a new note", 
     {"type": "object", "properties": {"title": {"type": "string"}, "content": {"type": "string"}, "tags": {"type": "string"}}, "required": ["title", "content"]}, 
     create_note)
@@ -161,7 +150,6 @@ server.add_tool("append_to_note", "Append content to an existing note",
     {"type": "object", "properties": {"title": {"type": "string"}, "content": {"type": "string"}}, "required": ["title", "content"]}, 
     append_to_note)
 
-# Register resources
 server.add_resource("notes://all", "All Notes", "Stream of all notes", get_all_notes)
 server.add_resource("notes://recent", "Recent Notes", "Last 10 notes", get_recent_notes)
 

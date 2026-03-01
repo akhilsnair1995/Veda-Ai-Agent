@@ -1,7 +1,7 @@
 # mcp/servers/memory_server.py
 import sys
-from pathlib import Path
 import sqlite3
+from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
@@ -41,9 +41,7 @@ def store_memory(text: str, category: str = "general", tags: str = "") -> str:
 def search_memory(query: str, top_k: int = 3) -> str:
     if semantic:
         results = semantic.search(query, top_k=top_k)
-        return "
----
-".join(results) if results else "No semantic memories found."
+        return "\n---\n".join(results) if results else "No semantic memories found."
     return "Semantic memory module not loaded."
 
 def store_fact(key: str, value: str, category: str = "general") -> str:
@@ -72,8 +70,7 @@ def list_facts(category: str = None) -> str:
     res = c.fetchall()
     conn.close()
     if not res: return "No facts found."
-    return "
-".join([f"{k}: {v}" for k, v in res])
+    return "\n".join([f"{k}: {v}" for k, v in res])
 
 def forget(query: str) -> str:
     # Disable facts matching query
@@ -93,8 +90,7 @@ def memory_stats() -> str:
     conn.close()
     
     sem_stat = "Active" if semantic else "Inactive"
-    return f"Semantic DB: {sem_stat}
-Discrete Facts: {count}"
+    return f"Semantic DB: {sem_stat}\nDiscrete Facts: {count}"
 
 # Resources
 def res_facts():

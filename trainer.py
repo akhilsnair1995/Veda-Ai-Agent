@@ -41,7 +41,7 @@ if __name__ == "__main__":
     else:
         # Run a standardized training module
         train_veda(
-            question="What code governs mechanical systems in Virginia, and what is its base model code?",
-            expected_key_points=["VMC", "Virginia Mechanical Code", "IMC", "International Mechanical Code"],
-            teacher_feedback_template="Veda, your response was: '{response}'. You missed mentioning: {missing}. Remember: In Virginia, the IMC is adopted as the VMC (Virginia Mechanical Code)."
+            question="What is the foundational code that governs mechanical systems internationally, and what organization publishes it?",
+            expected_key_points=["IMC", "International Mechanical Code", "ICC", "International Code Council"],
+            teacher_feedback_template="Veda, your response was: '{response}'. You missed mentioning: {missing}. Remember: The International Mechanical Code (IMC) is published by the International Code Council (ICC) and serves as the baseline mechanical code globally."
         )

@@ -18,7 +18,6 @@ from rich.columns import Columns
 from pathlib import Path
 
 from brain import VedaBrain
-from tool_handler import detect_and_execute_tool
 from memory.history import (
     init_database, save_message, get_all_notes, save_note, get_recent_messages
 )
@@ -189,30 +188,16 @@ class VedaUI:
         self.console.print("\n")
         return full_response
 
-    def run_tool_cycle(self, full_response: str):
+    def run_tool_cycle(self, full_response: str, user_input: str):
         """Execute tools and handle re-interpretation with status indicators."""
-        tool_used, tool_result = detect_and_execute_tool(full_response)
-
-        if tool_used:
-            with self.console.status("[bold yellow]Analyzing data from source...", spinner="dots"):
-                interpretation_prompt = (
-                    f"I have successfully researched the following data from the web/system:\n\n"
-                    f"{tool_result}\n\n"
-                    f"Based ONLY on this data, provide a definitive, technical response. Cite the specific code section (e.g., VMC 401.4). If the data is incomplete, state what is missing."
-                )
+        if "TOOL:" in full_response:
+            with self.console.status("[bold yellow]Executing MCP Tool...", spinner="dots"):
+                # Use the brain's built-in tool handler to execute and interpret
+                final_response = self.brain._handle_tool_calls(full_response, user_input)
+                self.console.print(f"\n[bold cyan]Veda[/bold cyan] [dim](Verified) >[/dim] {final_response}\n")
                 
-                final_response = ""
-                self.console.print(f"[bold yellow]Source Identified.[/bold yellow] [dim]Integrating into logic...[/dim]")
-                
-                self.console.print(f"[bold cyan]Veda[/bold cyan] [dim](Verified) >[/dim] ", end="")
-                with Live(Text(""), console=self.console, refresh_per_second=20, transient=False) as live:
-                    for token in self.brain.stream_think(interpretation_prompt):
-                        final_response += token
-                        live.update(Text(final_response))
-                self.console.print("\n")
-
                 save_message("assistant", final_response, self.session_id)
-                self.semantic_memory.store(f"Fact: {final_response[:1000]}", metadata={"source": "researched_fact"})
+                self.semantic_memory.store(f"Fact: {final_response[:1000]}", metadata={"source": "tool_result"})
         else:
             save_message("assistant", full_response, self.session_id)
             if len(full_response) > 50:
@@ -248,7 +233,7 @@ def main(model):
             full_response = ui.stream_response(user_input)
             
             # 2. Tool Cycle
-            ui.run_tool_cycle(full_response)
+            ui.run_tool_cycle(full_response, user_input)
 
         except KeyboardInterrupt:
             console.print("\n[dim]Type /exit to shutdown.[/dim]")

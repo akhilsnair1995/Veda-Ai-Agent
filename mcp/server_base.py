@@ -91,7 +91,8 @@ class MCPServer:
 
     def _send(self, message: dict):
         """Write a JSON-RPC message to stdout."""
-        print(json.dumps(message), flush=True)
+        sys.stdout.write(json.dumps(message) + "\n")
+        sys.stdout.flush()
 
     def _send_response(self, id: Any, result: Any):
         self._send({
@@ -134,7 +135,15 @@ class MCPServer:
             return
 
         try:
-            result = self._tools[tool_name].fn(**arguments)
+            # Inspection check to see if we should pass brain
+            sig = inspect.signature(self._tools[tool_name].fn)
+            if 'brain' in sig.parameters:
+                # This would need the brain object, but base server doesn't have it.
+                # Usually MCP tools are stateless.
+                result = self._tools[tool_name].fn(**arguments)
+            else:
+                result = self._tools[tool_name].fn(**arguments)
+                
             self._send_response(id, {
                 "content": [{"type": "text", "text": str(result)}]
             })
@@ -175,10 +184,7 @@ class MCPServer:
         Start the MCP server. Reads from stdin, writes to stdout.
         Runs until stdin closes or process is killed.
         """
-        sys.stderr.write(
-            f"MCP Server '{self.name}' starting...
-"
-        )
+        sys.stderr.write(f"MCP Server '{self.name}' starting...\n")
         sys.stderr.flush()
 
         for line in sys.stdin:

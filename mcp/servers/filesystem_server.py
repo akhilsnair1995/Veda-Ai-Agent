@@ -2,8 +2,8 @@
 import os
 import sys
 import shutil
-from pathlib import Path
 import fnmatch
+from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
@@ -11,12 +11,13 @@ from mcp.server_base import MCPServer
 
 server = MCPServer(name="filesystem", version="1.0.0")
 
-# Security: Only allow operations within the workspace or safe directories
-ALLOWED_BASE = BASE_DIR
-
 def _resolve_and_verify(path: str) -> Path:
-    p = Path(path).resolve()
-    # Simple check for now, can be tightened
+    # Basic path resolution
+    p = Path(path).expanduser()
+    if not p.is_absolute():
+        p = (BASE_DIR / p).resolve()
+    else:
+        p = p.resolve()
     return p
 
 def read_file(path: str) -> str:
@@ -29,70 +30,88 @@ def read_file(path: str) -> str:
         return f"Error reading file: {e}"
 
 def write_file(path: str, content: str) -> str:
-    p = _resolve_and_verify(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(content, encoding="utf-8")
-    return f"Successfully wrote to {path}"
+    try:
+        p = _resolve_and_verify(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        return f"Successfully wrote to {path}"
+    except Exception as e:
+        return f"Error writing file: {e}"
 
 def append_file(path: str, content: str) -> str:
-    p = _resolve_and_verify(path)
-    if not p.exists():
-        return write_file(path, content)
-    with p.open("a", encoding="utf-8") as f:
-        f.write(content)
-    return f"Successfully appended to {path}"
+    try:
+        p = _resolve_and_verify(path)
+        if not p.exists():
+            return write_file(path, content)
+        with p.open("a", encoding="utf-8") as f:
+            f.write(content)
+        return f"Successfully appended to {path}"
+    except Exception as e:
+        return f"Error appending file: {e}"
 
 def list_directory(path: str, recursive: bool = False, pattern: str = "*") -> str:
-    p = _resolve_and_verify(path)
-    if not p.exists() or not p.is_dir():
-        return f"Directory not found: {path}"
-    
-    results = []
-    if recursive:
-        for root, dirs, files in os.walk(p):
-            for file in fnmatch.filter(files, pattern):
-                results.append(str(Path(root) / file))
-    else:
-        for item in p.iterdir():
-            if fnmatch.fnmatch(item.name, pattern):
-                results.append(str(item))
-    return "
-".join(results) if results else "Empty directory or no matches."
+    try:
+        p = _resolve_and_verify(path)
+        if not p.exists() or not p.is_dir():
+            return f"Directory not found: {path}"
+        
+        results = []
+        if recursive:
+            for root, dirs, files in os.walk(p):
+                for file in fnmatch.filter(files, pattern):
+                    results.append(str(Path(root) / file))
+        else:
+            for item in p.iterdir():
+                if fnmatch.fnmatch(item.name, pattern):
+                    results.append(str(item))
+        return "\n".join(results) if results else "Empty directory or no matches."
+    except Exception as e:
+        return f"Error listing directory: {e}"
 
 def create_directory(path: str) -> str:
-    p = _resolve_and_verify(path)
-    p.mkdir(parents=True, exist_ok=True)
-    return f"Created directory {path}"
+    try:
+        p = _resolve_and_verify(path)
+        p.mkdir(parents=True, exist_ok=True)
+        return f"Created directory {path}"
+    except Exception as e:
+        return f"Error creating directory: {e}"
 
 def move_file(source: str, destination: str) -> str:
-    src = _resolve_and_verify(source)
-    dst = _resolve_and_verify(destination)
-    if not src.exists():
-        return f"Source not found: {source}"
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(src), str(dst))
-    return f"Moved {source} to {destination}"
+    try:
+        src = _resolve_and_verify(source)
+        dst = _resolve_and_verify(destination)
+        if not src.exists():
+            return f"Source not found: {source}"
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(src), str(dst))
+        return f"Moved {source} to {destination}"
+    except Exception as e:
+        return f"Error moving file: {e}"
 
 def delete_file(path: str, confirm: bool = False) -> str:
     if not confirm:
         return "You must set confirm=True to delete a file."
-    p = _resolve_and_verify(path)
-    if not p.exists():
-        return f"File not found: {path}"
-    if p.is_file():
-        p.unlink()
-    else:
-        shutil.rmtree(p)
-    return f"Deleted {path}"
+    try:
+        p = _resolve_and_verify(path)
+        if not p.exists():
+            return f"File not found: {path}"
+        if p.is_file():
+            p.unlink()
+        else:
+            shutil.rmtree(p)
+        return f"Deleted {path}"
+    except Exception as e:
+        return f"Error deleting file: {e}"
 
 def get_file_info(path: str) -> str:
-    p = _resolve_and_verify(path)
-    if not p.exists():
-        return f"Not found: {path}"
-    stats = p.stat()
-    return f"Size: {stats.st_size} bytes
-Modified: {stats.st_mtime}
-Is Dir: {p.is_dir()}"
+    try:
+        p = _resolve_and_verify(path)
+        if not p.exists():
+            return f"Not found: {path}"
+        stats = p.stat()
+        return f"Size: {stats.st_size} bytes\nModified: {stats.st_mtime}\nIs Dir: {p.is_dir()}"
+    except Exception as e:
+        return f"Error getting file info: {e}"
 
 server.add_tool("read_file", "Read file contents",
     {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}, read_file)

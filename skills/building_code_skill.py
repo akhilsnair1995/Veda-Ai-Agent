@@ -4,10 +4,10 @@ from skills.base_skill import BaseSkill, SkillMetadata, SkillResult
 class BuildingCodeSkill(BaseSkill):
     def define_metadata(self) -> SkillMetadata:
         return SkillMetadata(
-            name="Building Code Research Specialist",
-            description="Expert research and interpretation of IBC, VMC, and state-specific codes.",
+            name="Universal Engineering Code Specialist",
+            description="Expert research and interpretation of global building codes, IBC, IMC, ASHRAE, NFPA, etc.",
             domain="Engineering",
-            trigger_keywords=["building code", "ibc", "compliance", "regulation", "vmc", "ipc", "vpc", "nfpa", "ashrae"]
+            trigger_keywords=["building code", "ibc", "compliance", "regulation", "imc", "ipc", "nfpa", "ashrae", "engineering standard"]
         )
 
     def should_activate(self, user_message: str, context: dict) -> bool:
@@ -16,42 +16,28 @@ class BuildingCodeSkill(BaseSkill):
 
     def get_context(self) -> str:
         return """
---- EXPERT SKILL: BUILDING CODE RESEARCH ---
-BUILDING CODE REASONING FRAMEWORK:
-1. JURISDICTION: Identify if the requirement is local, state (e.g., Virginia VUSBC), or national (ICC).
-2. CODE SELECTION: Determine applicable code (VMC for mechanical, VPC for plumbing, IBC for structural/life safety).
-3. SECTION LOOKUP: Map the query to specific code chapters (e.g., VMC Chapter 4 for Ventilation, Chapter 6 for Duct Systems).
-4. TECHNICAL REQUIREMENT: Extract precise values (CFM, distance, material type, fire rating).
-5. CITATION: Every technical claim MUST cite the specific section (e.g., "Per VMC 401.2...").
-6. EXCEPTIONS: Always state if there are common exceptions to the primary rule.
+--- EXPERT SKILL: UNIVERSAL ENGINEERING CODE RESEARCH ---
+ENGINEERING CODE REASONING FRAMEWORK:
+1. JURISDICTION & AUTHORITY: Identify the AHJ (Authority Having Jurisdiction) and the applicable code edition (e.g., 2021 IBC, ASHRAE 62.1-2019).
+2. CODE/STANDARD SELECTION: Determine applicable foundational code or standard (IMC for mechanical, IPC for plumbing, IBC for life safety, NFPA for fire).
+3. SECTION LOOKUP: Map the query to specific code chapters and sections (e.g., IMC Chapter 4 for Ventilation).
+4. TECHNICAL REQUIREMENT: Extract precise engineering values (CFM, pipe sizing, material type, fire rating).
+5. CITATION: Every technical claim MUST cite the exact code or standard section (e.g., "Per 2021 IMC 401.2...").
+6. EXCEPTIONS & LOCAL AMENDMENTS: Always state if there are common exceptions or advise the user to verify local amendments.
 
 OUTPUT FORMAT:
-- JURISDICTION & APPLICABLE CODE
+- JURISDICTION & APPLICABLE CODE/STANDARD
 - RELEVANT SECTION(S)
 - EXACT REQUIREMENTS
 - PRACTICAL ENGINEERING IMPLICATIONS
 """
 
     def execute(self, user_message: str, context: dict, brain: any) -> SkillResult:
-        # Try to use MCP Notes server or semantic memory for specific local codes if available
-        # We will embed the search command directly to the brain's main process which handles tools
-        
-        prompt = f"Using the Building Code Reasoning Framework, answer this compliance query:
-
-{user_message}"
+        prompt = "Using the Building Code Reasoning Framework, answer this compliance query:\n\n" + user_message
         
         try:
-            # We call the brain to process this so it can use MCP tools (like web search or notes)
-            # if it needs to look up the code. We wrap it in a system instruction.
             messages = [
-                {"role": "system", "content": brain.client.chat(model=brain.model, messages=[{"role": "system", "content": "You are a routing agent."}])['message']['content']}, # Placeholder to satisfy structure
-                # Actually, let's just use the brain's existing client directly with our context injected
-            ]
-            
-            messages = [
-                {"role": "system", "content": self.get_context() + "
-
-" + getattr(brain, "VEDA_SYSTEM_PROMPT", "You are Veda.")},
+                {"role": "system", "content": self.get_context() + "\n\n" + getattr(brain, "VEDA_SYSTEM_PROMPT", "You are Veda.")},
                 {"role": "user", "content": prompt}
             ]
             
@@ -61,9 +47,6 @@ OUTPUT FORMAT:
                 options={"temperature": 0.1}
             )
             
-            # Since brain.process() already handles tools, ideally we'd let the brain do it, 
-            # but skill execution is internal. Let's return the raw response, and if it has tool calls,
-            # brain.process will catch them.
             return SkillResult(success=True, output=response["message"]["content"])
             
         except Exception as e:

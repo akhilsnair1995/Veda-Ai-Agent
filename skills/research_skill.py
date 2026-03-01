@@ -38,16 +38,12 @@ IMPORTANT: Never present a single source's claim as established fact without cor
 """
 
     def execute(self, user_message: str, context: dict, brain: any) -> SkillResult:
-        prompt = f"Conduct deep research on the following topic and provide a structured report. You must use the web search tool to gather current information.
-
-Topic: {user_message}"
+        prompt = "Conduct deep research on the following topic and provide a structured report. You must use the web search tool to gather current information.\n\nTopic: " + user_message
         
         # We return the prompt directly to the brain via the LLM, 
         # so the brain handles the TOOL calls.
         messages = [
-            {"role": "system", "content": self.get_context() + "
-
-" + "If you need data, output TOOL: web__search | PARAMS: {"query": "..."}"},
+            {"role": "system", "content": self.get_context() + "\n\n" + "If you need data, output TOOL: web__search | PARAMS: {\"query\": \"...\"}"},
             {"role": "user", "content": prompt}
         ]
         
