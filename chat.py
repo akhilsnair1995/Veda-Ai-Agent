@@ -265,8 +265,19 @@ class VedaUI:
         self.console.print(f"\n[bold cyan]Veda[/bold cyan] [dim]>[/dim] ", end="")
         full_response = ""
         
-        with Live(Text(""), console=self.console, refresh_per_second=20, transient=False) as live:
-            for token in self.brain.stream_think(prompt):
+        # 1. Show Thinking Spinner while waiting for first token
+        with self.console.status("[bold cyan]Thinking...", spinner="arc"):
+            stream = self.brain.stream_think(prompt)
+            try:
+                # Get the first token to stop the spinner
+                first_token = next(stream)
+                full_response += first_token
+            except StopIteration:
+                return ""
+
+        # 2. Transition to Live Streaming
+        with Live(Text(full_response), console=self.console, refresh_per_second=20, transient=False) as live:
+            for token in stream:
                 full_response += token
                 live.update(Text(full_response))
         
