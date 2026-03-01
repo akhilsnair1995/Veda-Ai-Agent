@@ -40,10 +40,18 @@ CORE IDENTITY:
 THE AGENTIC LOOP (Your Default Mode):
 For every task, you must follow this internal protocol:
 1. EXPLORE: List directories, read READMEs/configs, and understand the context first.
-2. PLAN: Think step-by-step. Break complex tasks into sequenced sub-tasks.
-3. ACT: Execute one tool at a time. Prefer surgical edits (edit_file) over full rewrites.
-4. OBSERVE: Read the tool output carefully. If it fails, diagnose the root cause.
-5. REPEAT: Iterate until the task is verified as complete. Use DONE: <summary> to finish.
+2. SCHEMATIC REVIEW: Cross-reference your planned tool calls with the 'AVAILABLE TOOLS' list. Verify the EXACT spelling of tool names and parameter keys.
+3. PLAN: Think step-by-step. Break complex tasks into sequenced sub-tasks.
+4. ACT: Execute one tool at a time. Prefer surgical edits (edit_file) over full rewrites.
+5. OBSERVE: Read the tool output carefully. If it fails, diagnose the root cause.
+6. REPEAT: Iterate until the task is verified as complete. Use DONE: <summary> to finish.
+
+SANDBOXED SCRIPTING PROTOCOL:
+- If a task requires custom logic, calculations, or data processing not available in your tools:
+  1. Write a temporary Python script using 'write_file'.
+  2. Execute it using 'run_python' or 'run_shell'.
+  3. Interpret the STDOUT/STDERR to provide the final result.
+- This allows you to bridge tools and automate any task.
 
 SURGICAL EDIT MANDATE:
 - When modifying code, ALWAYS use the 'edit_file' tool if the file exists.
@@ -58,10 +66,16 @@ INTELLIGENCE & SAFETY RULES:
 
 TOOL USE FORMAT:
 When you need to act, respond in this exact format:
-TOOL: <tool_name>
+TOOL: <exact_tool_name_from_list>
 PARAMS: {"key": "value"}
 
-Available tools: notes, filesystem, web, code, memory.
+STRICT TOOL RULES:
+- NEVER invent tool names or parameter names (e.g., use 'flow_gpm', NOT 'flow_rate_gpm').
+- Use the 'AVAILABLE TOOLS' list below for the exact spelling of functions and keys.
+- For code execution, ALWAYS use 'run_python' or 'run_shell' from the 'code' server.
+- If a tool fails due to a 'keyword argument' error, check the schema and retry with the CORRECT name immediately.
+
+Available tools: notes, filesystem, web, code, memory, document, simulation, visualization.
 Use your 'get_all_tool_schemas' capability to see the specific tool functions.
 """
 
@@ -105,17 +119,28 @@ class VedaBrain:
             with open(knowledge_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 
-            # Quick check to see if we already loaded it
             if self.semantic_memory.collection.count() > 0:
-                # We assume it's already seeded to save time, but a true robust
-                # implementation might check for specific tags. For now, if count > 0, skip.
                 return
                 
             console.print("[dim]Loading foundational engineering knowledge...[/dim]")
             loaded = 0
             for category, items in data.items():
                 for item in items:
-                    content = f"[{category.upper()}] {item['topic']}: {item['content']}"
+                    if category == "mcp_tool_schemas":
+                        # Handle the schema structure
+                        server = item.get('server', 'unknown')
+                        tools = item.get('tools', [])
+                        examples = [f"{t['name']}: {t.get('example', '')}" for t in tools if 'example' in t]
+                        content = f"[SCHEMA] MCP Server '{server}' tools: " + \
+                                  ", ".join([f"{t['name']}({', '.join(t['params'])})" for t in tools])
+                        if examples:
+                            content += "\nEXAMPLES:\n" + "\n".join(examples)
+                    else:
+                        # Handle the topic/content structure
+                        topic = item.get('topic', 'General')
+                        body = item.get('content', '')
+                        content = f"[{category.upper()}] {topic}: {body}"
+                    
                     self.semantic_memory.store(content, metadata={"source": "core_knowledge", "category": category})
                     loaded += 1
             console.print(f"[dim]✓ Seeded {loaded} core principles into memory.[/dim]")
@@ -217,11 +242,14 @@ class VedaBrain:
 
     def _handle_tool_calls(self, 
                            response: str, 
-                           original_query: str) -> str:
+                           original_query: str,
+                           depth: int = 0) -> str:
         """
-        Detect and execute tool calls in LLM response.
-        Then ask LLM to interpret results.
+        Detect and execute tool calls. Supports recursive chaining up to 5 levels.
         """
+        if depth >= 5:
+            return response + "\n\n[System: Maximum tool depth reached.]"
+
         tool_match = re.search(r'TOOL:\s*(\S+)', response)
         params_match = re.search(
             r'PARAMS:\s*(\{.*?\})', response, re.DOTALL
@@ -238,8 +266,7 @@ class VedaBrain:
         except json.JSONDecodeError:
             params = {}
 
-        # Fallback: if LLM outputs server name (like 'filesystem') instead of the tool name
-        # and buries the actual tool in params {"name": "read_file", "arguments": {...}}
+        # Unwrapping logic for server names
         if tool_name in self.mcp_manager.clients:
             if "name" in params:
                 tool_name = params["name"]
@@ -251,27 +278,29 @@ class VedaBrain:
             elif "args" in params:
                 params = params["args"]
             elif "name" in params or "action" in params:
-                # clean the dict if arguments are at the root level
                 params = {k: v for k, v in params.items() if k not in ("name", "action")}
 
         # Execute via MCP
         console.print(f"[dim cyan]⚙ {tool_name}({params})[/dim cyan]")
         result = self.mcp_manager.call_tool(tool_name, params)
+        
+        # Log result for the model to see
         console.print(
             f"[dim]→ {str(result)[:150]}...[/dim]"
             if len(str(result)) > 150
             else f"[dim]→ {result}[/dim]"
         )
 
-        # Ask LLM to interpret the tool result
+        # Ask LLM to interpret AND decide if another tool is needed
         interpret_messages = [
             {"role": "system", "content": VEDA_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": (
-                    f"Original question: {original_query}\n\n"
+                    f"Original task: {original_query}\n\n"
                     f"Tool '{tool_name}' returned:\n{result}\n\n"
-                    f"Provide a clear, helpful answer using this result."
+                    f"If the task is complete, provide the final answer. "
+                    f"If you need another tool (e.g., to run a script you just wrote), call it now."
                 )
             }
         ]
@@ -281,7 +310,14 @@ class VedaBrain:
             messages=interpret_messages,
             options={"temperature": 0.1}
         )
-        return final["message"]["content"]
+        
+        next_response = final["message"]["content"]
+        
+        # RECURSIVE CHECK: If the new response has another TOOL call, loop.
+        if "TOOL:" in next_response:
+            return self._handle_tool_calls(next_response, original_query, depth + 1)
+            
+        return next_response
 
     def stream_think(self, user_message: str):
         """Streaming version of think() for real-time output."""

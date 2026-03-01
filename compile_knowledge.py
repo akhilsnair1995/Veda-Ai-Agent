@@ -1,8 +1,4 @@
-# veda_hardcoded_knowledge.py
-# This script converts the massive training documents into a hardcoded JSON format
-# that Veda will load into her memory upon boot, ensuring she never loses her 
-# base engineering knowledge even after a flush.
-
+# compile_knowledge.py
 import sys
 import json
 from pathlib import Path
@@ -14,104 +10,54 @@ def compile_knowledge():
     print("Compiling hardcoded knowledge base...")
     
     knowledge_base = {
+        "mcp_tool_schemas": [
+            {
+                "server": "filesystem",
+                "tools": [
+                    {"name": "read_file", "params": ["path"], "example": "TOOL: read_file\nPARAMS: {\"path\": \"file.txt\"}"},
+                    {"name": "write_file", "params": ["path", "content"], "example": "TOOL: write_file\nPARAMS: {\"path\": \"script.py\", \"content\": \"print('hi')\"}"},
+                    {"name": "edit_file", "params": ["path", "old", "new"], "example": "TOOL: edit_file\nPARAMS: {\"path\": \"file.txt\", \"old\": \"wrong\", \"new\": \"right\"}"},
+                    {"name": "list_directory", "params": ["path", "recursive", "pattern"], "example": "TOOL: list_directory\nPARAMS: {\"path\": \".\"}"}
+                ]
+            },
+            {
+                "server": "code",
+                "tools": [
+                    {"name": "run_python", "params": ["code", "timeout"], "example": "TOOL: run_python\nPARAMS: {\"code\": \"import math\\nprint(math.pi)\"}"},
+                    {"name": "run_shell", "params": ["command", "timeout", "confirm"], "example": "TOOL: run_shell\nPARAMS: {\"command\": \"pip list\", \"confirm\": true}"}
+                ]
+            },
+            {
+                "server": "simulation",
+                "tools": [
+                    {"name": "calc_psychrometrics", "params": ["dry_bulb_f", "relative_humidity_pct"]},
+                    {"name": "calc_pipe_friction", "params": ["flow_gpm", "diameter_inches", "length_ft"]}
+                ]
+            }
+        ],
+        "automation_logic": [
+            {
+                "topic": "The Bridge Pattern",
+                "content": "To perform custom tasks: 1. Use 'write_file' to save a .py script. 2. Use 'run_python' or 'run_shell' to execute it. 3. Read the output to verify."
+            },
+            {
+                "topic": "System Capabilities",
+                "content": "You have 'pandas', 'matplotlib.pyplot', 'fitz' (PyMuPDF), and 'requests' installed in your local environment. Use them for data, charts, PDFs, and APIs."
+            }
+        ],
         "mep_first_principles": [
             {
-                "topic": "Thermodynamics in HVAC",
-                "content": "The First Law (conservation of energy) dictates that the heat removed from a space plus compressor work equals the heat rejected at the condenser. The Second Law dictates that heat naturally flows from hot to cold; reversing this requires work (refrigeration cycle)."
-            },
-            {
-                "topic": "Psychrometrics",
-                "content": "Sensible heat changes temperature without changing moisture; latent heat changes moisture without changing temperature. Enthalpy is the total heat content. The dew point is the temperature at which condensation begins. In cooling, you must lower the coil temperature below the dew point to dehumidify."
-            },
-            {
                 "topic": "Fluid Mechanics",
-                "content": "Bernoulli's principle states that for an inviscid flow, an increase in speed occurs simultaneously with a decrease in pressure. In ducts and pipes, the Reynolds number predicts flow regimes: laminar (Re < 2000) vs turbulent (Re > 4000). Turbulent flow increases friction loss but improves heat transfer."
-            },
-            {
-                "topic": "Electrical Engineering",
-                "content": "Ohm's Law (V=IR) and the Power equation (P=VI). In AC circuits, Power Factor (PF) is the ratio of real power (kW) to apparent power (kVA). A low PF draws more current for the same useful work, requiring larger wires. 3-Phase power delivers constant power transfer compared to pulsing 1-phase."
-            },
-            {
-                "topic": "Plumbing & Fire",
-                "content": "Hunter's Curve is a statistical method for estimating peak water demand based on Water Supply Fixture Units (WSFU), assuming not all fixtures are used simultaneously. In fire protection, hazard classifications (Light, Ordinary, Extra Hazard) determine the required sprinkler density (gpm/sqft)."
-            }
-        ],
-        "software_architecture": [
-            {
-                "topic": "Domain-Driven Design (DDD)",
-                "content": "DDD focuses on the core domain and domain logic. A Bounded Context is a linguistic and conceptual boundary within a system. In MEP automation, 'Duct Sizing' and 'Electrical Load Calculation' should be separate Bounded Contexts to prevent data model tangling."
-            },
-            {
-                "topic": "SOLID Principles",
-                "content": "Single Responsibility (one reason to change), Open/Closed (open for extension, closed for modification), Liskov Substitution (subtypes must be substitutable for base types), Interface Segregation (small, specific interfaces), Dependency Inversion (depend on abstractions, not concretions)."
-            },
-            {
-                "topic": "Distributed Systems",
-                "content": "The CAP Theorem states that a distributed data store can only guarantee two of three: Consistency, Availability, and Partition Tolerance. In MEP cloud tools, we usually choose Consistency and Partition Tolerance (CP) because an incorrect engineering calculation is worse than a system being temporarily offline."
-            },
-            {
-                "topic": "Revit API Mastery",
-                "content": "In the Revit API, every change to the document must be wrapped in a Transaction. Reading data does not require a Transaction. Use FilteredElementCollector aggressively to retrieve elements, applying quick filters (like ElementCategoryFilter) before slow filters (like parameter value checks) for performance."
-            },
-            {
-                "topic": "Git & Version Control",
-                "content": "The principle of atomic commits: each commit should contain one logical change. Branching strategies like GitFlow use 'main' for production releases and 'develop' for integration. Feature branches branch off 'develop'."
-            }
-        ],
-        "advanced_logic": [
-            {
-                "topic": "Algorithm Analysis",
-                "content": "Time complexity (Big O notation) measures how runtime scales with input size. An O(n^2) algorithm is unacceptable for clash detection in a Revit model with 100,000 elements. You must use spatial partitioning (like an Octree or bounding box intersection) to reduce clash detection to O(n log n)."
-            },
-            {
-                "topic": "Value Engineering & Lifecycle Cost",
-                "content": "Value Engineering (VE) is not just cost-cutting; it is increasing the function-to-cost ratio. Lifecycle Cost Analysis (LCCA) considers initial cost, maintenance, energy use, and replacement over the building's life. A highly efficient chiller costs more upfront but has a lower LCCA."
-            },
-            {
-                "topic": "Error Handling & Logging",
-                "content": "Never use bare 'except:' clauses in Python. Catch specific exceptions. Logging should have levels: DEBUG (tracing), INFO (normal operation), WARNING (potential issues), ERROR (recoverable failures), CRITICAL (system crash). Structured JSON logging is preferred for machine parsing."
-            },
-            {
-                "topic": "Automated Testing",
-                "content": "Unit tests verify individual functions. Integration tests verify components working together. End-to-end (E2E) tests verify the whole system. Test-Driven Development (TDD) means writing the test before the code."
-            },
-            {
-                "topic": "Strategic Capstone",
-                "content": "Veda, your ultimate meta-directive: You are an autonomous digital engineer. You must bridge the gap between abstract physics/math and concrete software execution. When given a complex engineering task, you will research the code, formulate the physics, design the software architecture, and write the script to execute it."
-            }
-        ],
-        "web_and_parallel_agentic": [
-            {
-                "topic": "Deep Search Strategies",
-                "content": "Do not rely on a single query. Use the 'Web' MCP server to perform multi-stage searches. First, find high-level overviews. Second, identify key URLs. Third, fetch specific pages for granular data. Use search operators like 'site:iccsafe.org' or 'filetype:pdf'."
-            },
-            {
-                "topic": "Intelligent Scraping",
-                "content": "When using 'fetch_page', act as a 'Data Sanitizer'. Ignore navigation menus and footers. Extract only the technical tables, code sections, and specific requirement text."
-            },
-            {
-                "topic": "Structured Extraction",
-                "content": "Once you have raw text, use reasoning to convert it into a valid JSON schema. Extract specific variables (EER, Capacity) into a machine-readable JSON object."
-            },
-            {
-                "topic": "Parallel Orchestration (Fan-Out)",
-                "content": "When a task is large, break it into sub-tasks. Spawn sub-agents for each task. Formulate plans to process items in parallel (e.g., 'Search for Brand A' and 'Search for Brand B' concurrently)."
-            },
-            {
-                "topic": "Result Synthesis (Fan-In)",
-                "content": "After parallel execution, aggregate the results. Identify contradictions between sources and resolve them. Present a single, unified truth."
-            },
-            {
-                "topic": "State Preservation",
-                "content": "When managing multiple engineering projects, tag data with 'Project_ID'. Prevent cross-contamination of logic between different projects. Verify context before making claims."
+                "content": "Use Hazen-Williams for pipe pressure drop. Mandated tool: calc_pipe_friction(flow_gpm, diameter_inches, length_ft)."
             }
         ]
     }
     
+    KNOWLEDGE_DIR.mkdir(exist_ok=True)
     with open(KNOWLEDGE_DIR / "core_knowledge.json", "w", encoding="utf-8") as f:
         json.dump(knowledge_base, f, indent=4)
         
-    print("✓ Hardcoded knowledge compiled successfully.")
+    print("✓ Hardcoded knowledge compiled with Examples.")
 
 if __name__ == "__main__":
     compile_knowledge()

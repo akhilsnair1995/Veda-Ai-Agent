@@ -5,6 +5,12 @@ servers:
     - C:\Users\akhil\veda_agent\mcp\servers\code_server.py
     description: Code execution and analysis
     enabled: true
+  document:
+    command:
+    - C:\Users\akhil\veda_agent\venv_win\Scripts\python.exe
+    - C:\Users\akhil\veda_agent\mcp\servers\document_server.py
+    description: PDF parsing and document intelligence
+    enabled: true
   filesystem:
     command:
     - C:\Users\akhil\veda_agent\venv_win\Scripts\python.exe
@@ -22,6 +28,18 @@ servers:
     - C:\Users\akhil\veda_agent\venv_win\Scripts\python.exe
     - C:\Users\akhil\veda_agent\mcp\servers\notes_server.py
     description: Veda's personal notes system
+    enabled: true
+  simulation:
+    command:
+    - C:\Users\akhil\veda_agent\venv_win\Scripts\python.exe
+    - C:\Users\akhil\veda_agent\mcp\servers\simulation_server.py
+    description: Engineering calculations and physics
+    enabled: true
+  visualization:
+    command:
+    - C:\Users\akhil\veda_agent\venv_win\Scripts\python.exe
+    - C:\Users\akhil\veda_agent\mcp\servers\visualization_server.py
+    description: Chart and graph generation
     enabled: true
   web:
     command:

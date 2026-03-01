@@ -12,7 +12,10 @@ from mcp.server_base import MCPServer
 
 server = MCPServer(name="code", version="1.0.0")
 
-def run_python(code: str, timeout: int = 10) -> str:
+def run_python(code: str = None, timeout: int = 10, python_code: str = None) -> str:
+    code = code or python_code
+    if not code:
+        return "Error: code is required."
     # Sandboxed execution using a temporary file
     fd, temp_path = tempfile.mkstemp(suffix='.py')
     try:

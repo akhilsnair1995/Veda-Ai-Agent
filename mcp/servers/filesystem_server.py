@@ -28,7 +28,10 @@ def _resolve_and_verify(path: str) -> Path:
         p = p.resolve()
     return p
 
-def read_file(path: str) -> str:
+def read_file(path: str = None, file_path: str = None) -> str:
+    path = path or file_path
+    if not path:
+        return "Error: path is required."
     p = _resolve_and_verify(path)
     if not p.exists() or not p.is_file():
         return f"File not found: {path}"
@@ -42,7 +45,10 @@ def read_file(path: str) -> str:
     except Exception as e:
         return f"Error reading file: {e}"
 
-def write_file(path: str, content: str) -> str:
+def write_file(path: str = None, content: str = "", file_path: str = None) -> str:
+    path = path or file_path
+    if not path:
+        return "Error: path is required."
     try:
         p = _resolve_and_verify(path)
         p.parent.mkdir(parents=True, exist_ok=True)
