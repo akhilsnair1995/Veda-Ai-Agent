@@ -25,11 +25,11 @@ from memory.semantic import SemanticMemory
 
 # --- UI CONSTANTS ---
 VEDA_BANNER = r"""
-[bold magenta]   _   __  ______   ____    ___ [/bold magenta]
-[bold magenta]  | | / / / ____/  / __ \  /   |[/bold magenta]
-[bold magenta]  | |/ / / __/    / / / / / /| |[/bold magenta]
-[bold magenta]  |   / / /___   / /_/ / / ___ |[/bold magenta]
-[bold magenta]  |__/ /_____/  /_____/ /_/  |_|[/bold magenta]
+[bold green]   _   __  ______   ____    ___ [/bold green]
+[bold green]  | | / / / ____/  / __ \  /   |[/bold green]
+[bold yellow]  | |/ / / __/    / / / / / /| |[/bold yellow]
+[bold #8B4513]  |   / / /___   / /_/ / / ___ |[/bold #8B4513]
+[bold #5D4037]  |__/ /_____/  /_____/ /_/  |_|[/bold #5D4037]
 """
 
 class VedaUI:
