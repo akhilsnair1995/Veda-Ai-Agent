@@ -124,21 +124,27 @@ def delete_file(path: str, confirm: bool = False) -> str:
     except Exception as e:
         return f"Error deleting file: {e}"
 
-def unzip_file(zip_path: str, extract_to: str = None) -> str:
+def unzip_file(zip_path: str = None, extract_to: str = None, zip_file: str = None, output_dir: str = None) -> str:
     """Extract a zip file to a directory."""
     try:
         import zipfile
-        src = _resolve_and_verify(zip_path)
+        src_path = zip_path or zip_file
+        target_path = extract_to or output_dir
+        
+        if not src_path:
+            return "Error: zip_path or zip_file is required."
+            
+        src = _resolve_and_verify(src_path)
         if not src.exists():
-            return f"Error: Zip file not found: {zip_path}"
+            return f"Error: Zip file not found: {src_path}"
 
-        target = _resolve_and_verify(extract_to) if extract_to else src.parent / src.stem
+        target = _resolve_and_verify(target_path) if target_path else src.parent / src.stem
         target.mkdir(parents=True, exist_ok=True)
 
         with zipfile.ZipFile(src, 'r') as zip_ref:
             zip_ref.extractall(target)
 
-        return f"Successfully extracted {zip_path} to {target}"
+        return f"Successfully extracted {src_path} to {target}"
     except Exception as e:
         return f"Error extracting zip: {e}"
 

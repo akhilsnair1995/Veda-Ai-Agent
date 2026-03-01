@@ -39,6 +39,7 @@ class MCPServerManager:
         self.tool_routing: dict[str, str] = {}
         self.all_tools: dict[str, dict] = {}
         self.init_errors: list[str] = []
+        self._last_calls: list[str] = [] # Track last few calls to prevent loops
 
     def load_config(self) -> dict:
         """
@@ -194,7 +195,9 @@ class MCPServerManager:
             "pdf": "document__read_pdf",
             "chart": "visualization__generate_chart",
             "plot": "visualization__generate_chart",
-            "calc": "simulation__calc_psychrometrics"
+            "calc": "simulation__calc_psychrometrics",
+            "unzip": "filesystem__unzip_file",
+            "extract_zip": "filesystem__unzip_file"
         }
         
         target_tool = tool_name.lower().strip()
@@ -202,7 +205,17 @@ class MCPServerManager:
             console.print(f"[dim yellow]Fuzzy routing '{target_tool}' -> '{fuzzy_map[target_tool]}'[/dim yellow]")
             target_tool = fuzzy_map[target_tool]
 
-        # 2. Standard Routing
+        # 2. REPETITION BREAKER
+        call_sig = f"{target_tool}:{json.dumps(params, sort_keys=True)}"
+        if self._last_calls.count(call_sig) >= 2:
+            self._last_calls.clear() # Reset after breaking
+            return f"ERROR: Infinite loop detected for tool '{target_tool}'. You have already called this tool with these exact parameters. DO NOT retry. Change your strategy or ask the user for clarification."
+        
+        self._last_calls.append(call_sig)
+        if len(self._last_calls) > 5:
+            self._last_calls.pop(0)
+
+        # 3. Standard Routing
         server_name = self.tool_routing.get(target_tool)
         if not server_name:
             # Check if it was provided without prefix but is in routing
@@ -218,7 +231,7 @@ class MCPServerManager:
         # Strip server prefix if present
         clean_name = target_tool.replace(f"{server_name}__", "")
 
-        # 3. CLEANUP: Hallucinated keys and variations
+        # 4. CLEANUP: Hallucinated keys and variations
         if isinstance(params, dict):
             # Remove 'server' key if hallucinated
             if "server" in params:
