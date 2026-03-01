@@ -14,7 +14,7 @@ from memory.semantic import SemanticMemory
 
 # Page Configuration
 st.set_page_config(
-    page_title="Veda🧠Cowork",
+    page_title="Veda🧠Hub",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -41,7 +41,7 @@ if "artifact" not in st.session_state:
 
 # --- SIDEBAR: Universal Browser & Control Panel ---
 with st.sidebar:
-    st.title("Veda🧠Cowork")
+    st.title("Veda🧠Hub")
     st.caption("INDUSTRIALIZING ENGINEERING DESIGN")
     st.divider()
     
