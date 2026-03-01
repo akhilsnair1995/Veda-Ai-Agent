@@ -101,6 +101,7 @@ class VedaUI:
         help_table.add_row("/skills", "List and Manage Veda's Expert Skills")
         help_table.add_row("/mcp", "Check Status of MCP Server Integration")
         help_table.add_row("/reload", "Reconnect to Ollama (refreshes host URL)")
+        help_table.add_row("/evolve", "Run proactive gap analysis and auto-generate skills")
         help_table.add_row("/clear", "Refresh Terminal Display")
         help_table.add_row("/help", "Show this help menu")
         help_table.add_row("/exit", "Secure System Shutdown")
@@ -110,6 +111,16 @@ class VedaUI:
     def handle_command(self, user_input: str) -> bool:
         cmd_parts = user_input.strip().split(" ", 1)
         cmd = cmd_parts[0].lower()
+
+        if cmd == "/evolve":
+            self.console.print("[dim]Launching Proactive Evolution Engine...[/dim]")
+            try:
+                # We import and run it here to keep chat.py clean
+                from proactive_evolution import run_evolution
+                run_evolution()
+            except Exception as e:
+                self.console.print(f"[red]Evolution engine error: {e}[/red]")
+            return True
 
         if cmd == "/reload":
             self.console.print("[dim]Refreshing connection to Ollama...[/dim]")

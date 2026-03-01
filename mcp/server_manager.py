@@ -96,6 +96,30 @@ class MCPServerManager:
                     ],
                     "enabled": True,
                     "description": "Veda's memory system"
+                },
+                "document": {
+                    "command": [
+                        python_exec,
+                        str(BASE_DIR / "mcp/servers/document_server.py")
+                    ],
+                    "enabled": True,
+                    "description": "PDF parsing and document intelligence"
+                },
+                "visualization": {
+                    "command": [
+                        python_exec,
+                        str(BASE_DIR / "mcp/servers/visualization_server.py")
+                    ],
+                    "enabled": True,
+                    "description": "Chart and graph generation"
+                },
+                "simulation": {
+                    "command": [
+                        python_exec,
+                        str(BASE_DIR / "mcp/servers/simulation_server.py")
+                    ],
+                    "enabled": True,
+                    "description": "Engineering calculations and physics"
                 }
             }
         }
