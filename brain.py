@@ -238,13 +238,22 @@ class VedaBrain:
                 }
             )
             answer = response["message"]["content"]
+            
+            # HARD STOP: If a tool call is found, truncate the answer to JUST the part before the tool
+            # or handle it Turn-by-Turn.
+            if "TOOL:" in answer:
+                idx = answer.find("TOOL:")
+                # We keep the text BEFORE the tool call as her thought process
+                thought_process = answer[:idx].strip()
+                tool_call_part = answer[idx:]
+                
+                # Execute the tool call recursively
+                return self._handle_tool_calls(tool_call_part, user_message)
+
         except Exception as e:
             return f"Brain connection error: {e}"
 
-        # Step 5: Handle tool calls if present
-        answer = self._handle_tool_calls(answer, user_message)
-
-        # Step 6: Store in memory
+        # Step 5: Final Response (if no tools were called)
         save_message("user", user_message, "session")
         save_message("assistant", answer, "session")
         
