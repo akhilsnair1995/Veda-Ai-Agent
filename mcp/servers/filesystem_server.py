@@ -19,11 +19,13 @@ def _human_size(size: int) -> str:
         size /= 1024
     return f"{size:.1f} PB"
 
+WORKSPACE_DIR = BASE_DIR / "workspace"
+
 def _resolve_and_verify(path: str) -> Path:
-    # Basic path resolution
+    # Resolve relative paths against the dedicated workspace
     p = Path(path).expanduser()
     if not p.is_absolute():
-        p = (BASE_DIR / p).resolve()
+        p = (WORKSPACE_DIR / p).resolve()
     else:
         p = p.resolve()
     return p
