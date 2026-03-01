@@ -3,16 +3,27 @@ import streamlit as st
 import os
 import time
 import uuid
+import re
+import sys
 from pathlib import Path
 from datetime import datetime
 from PIL import Image
-import re
+
+# Ensure project root is in path
+BASE_DIR = Path(__file__).resolve().parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 # Veda Core Imports
 from brain import VedaBrain
 from memory.history import (
-    init_database, save_message, get_session_messages, 
-    create_session, get_all_sessions, delete_session, toggle_pin_session
+    init_database, 
+    save_message, 
+    get_session_messages, 
+    create_session, 
+    get_all_sessions, 
+    delete_session, 
+    toggle_pin_session
 )
 from memory.semantic import SemanticMemory
 
@@ -58,32 +69,36 @@ with st.sidebar:
     
     # 2. Recent Chats (Sessions)
     st.subheader("💬 Recent Sessions")
-    sessions = get_all_sessions()
-    for s in sessions:
-        cols = st.columns([0.7, 0.15, 0.15])
-        title = s['title'] or f"Chat {s['session_id'][:8]}"
-        if s['is_pinned']:
-            title = f"📌 {title}"
+    try:
+        sessions = get_all_sessions()
+        for s in sessions:
+            cols = st.columns([0.7, 0.15, 0.15])
+            title = s['title'] or f"Chat {s['session_id'][:8]}"
+            if s['is_pinned']:
+                title = f"📌 {title}"
+                
+            with cols[0]:
+                is_active = s['session_id'] == st.session_state.current_session_id
+                if st.button(title, key=f"session_{s['session_id']}", use_container_width=True, 
+                             type="primary" if is_active else "secondary"):
+                    st.session_state.current_session_id = s['session_id']
+                    st.session_state.workspace_path = s['workspace_path']
+                    st.session_state.artifact = {"type": None, "content": None, "title": "Cowork Space"}
+                    st.rerun()
             
-        with cols[0]:
-            if st.button(title, key=f"session_{s['session_id']}", use_container_width=True, 
-                         type="secondary" if s['session_id'] != st.session_state.current_session_id else "primary"):
-                st.session_state.current_session_id = s['session_id']
-                st.session_state.workspace_path = s['workspace_path']
-                st.session_state.artifact = {"type": None, "content": None, "title": "Cowork Space"}
-                st.rerun()
-        
-        with cols[1]:
-            if st.button("📍", key=f"pin_{s['session_id']}", help="Toggle Pin"):
-                toggle_pin_session(s['session_id'])
-                st.rerun()
-        
-        with cols[2]:
-            if st.button("🗑️", key=f"del_{s['session_id']}", help="Delete Session"):
-                delete_session(s['session_id'])
-                if st.session_state.current_session_id == s['session_id']:
-                    st.session_state.current_session_id = None
-                st.rerun()
+            with cols[1]:
+                if st.button("📍", key=f"pin_{s['session_id']}", help="Toggle Pin"):
+                    toggle_pin_session(s['session_id'])
+                    st.rerun()
+            
+            with cols[2]:
+                if st.button("🗑️", key=f"del_{s['session_id']}", help="Delete Session"):
+                    delete_session(s['session_id'])
+                    if st.session_state.current_session_id == s['session_id']:
+                        st.session_state.current_session_id = None
+                    st.rerun()
+    except Exception as e:
+        st.error(f"Session Error: {e}")
 
     st.divider()
     
@@ -93,7 +108,13 @@ with st.sidebar:
         models_resp = st.session_state.brain.client.list()
         models = models_resp.get('models', []) if isinstance(models_resp, dict) else models_resp.models
         names = [m.get('name') if isinstance(m, dict) else m.model for m in models]
-        new_model = st.selectbox("Active Brain:", names, index=names.index(st.session_state.brain.model) if st.session_state.brain.model in names else 0)
+        
+        try:
+            current_model_idx = names.index(st.session_state.brain.model)
+        except ValueError:
+            current_model_idx = 0
+            
+        new_model = st.selectbox("Active Brain:", names, index=current_model_idx)
         if new_model != st.session_state.brain.model:
             st.session_state.brain.model = new_model
             st.success(f"Switched to {new_model}")
@@ -112,7 +133,12 @@ if st.session_state.current_session_id == "NEW" or st.session_state.current_sess
         st.write("#### Select Working Directory")
         col_path, col_btn = st.columns([0.8, 0.2])
         with col_path:
-            target_path = st.text_input("Active Path:", st.session_state.workspace_path)
+            # Display current path and allow manual editing
+            selected_path = st.text_input("Active Path:", st.session_state.workspace_path)
+            if selected_path != st.session_state.workspace_path:
+                if os.path.isdir(selected_path):
+                    st.session_state.workspace_path = str(Path(selected_path).resolve())
+                    st.rerun()
         with col_btn:
             if st.button("⬆️ Parent"):
                 st.session_state.workspace_path = str(Path(st.session_state.workspace_path).parent)
@@ -144,7 +170,7 @@ else:
     )
 
     # Determine layout: Split screen ONLY if artifact exists
-    show_artifact = st.session_state.artifact["content"] is not None
+    show_artifact = st.session_state.artifact.get("content") is not None
     
     if show_artifact:
         chat_col, cowork_col = st.columns([0.6, 0.4])
@@ -153,7 +179,7 @@ else:
         cowork_col = None
 
     with chat_col:
-        st.header(f"💬 {session_title if 'session_title' in locals() else 'Chat'}")
+        st.header(f"💬 Session Active")
         st.caption(f"Working Directory: `{st.session_state.workspace_path}`")
         
         chat_container = st.container(height=500)
