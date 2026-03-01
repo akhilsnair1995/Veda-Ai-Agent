@@ -7,9 +7,9 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-# The database file will live here
-DB_FILE = Path("/mnt/c/Users/akhil/veda_agent/memory/conversations.db")
-
+# Use a relative path so it works on both Windows and WSL
+BASE_DIR = Path(__file__).resolve().parent.parent
+DB_FILE = BASE_DIR / "memory" / "conversations.db"
 
 def init_database():
     """

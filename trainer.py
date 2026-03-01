@@ -2,11 +2,11 @@
 # Specialized script for Teacher AI to interact with and train Veda.
 
 import sys
-from brain import AIBrain
+from brain import VedaBrain
 from memory.semantic import SemanticMemory
 
 def train_veda(question, expected_key_points, teacher_feedback_template):
-    brain = AIBrain()
+    brain = VedaBrain()
     semantic_memory = SemanticMemory()
     
     print(f"\n[TEACHER] Testing Veda with: {question}")

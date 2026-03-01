@@ -1,0 +1,30 @@
+servers:
+  notes:
+    command: ["python", "mcp/servers/notes_server.py"]
+    enabled: true
+    description: "Veda's personal notes system"
+  
+  filesystem:
+    command: ["python", "mcp/servers/filesystem_server.py"]  
+    enabled: true
+    description: "File system operations"
+  
+  web:
+    command: ["python", "mcp/servers/web_server.py"]
+    enabled: true
+    description: "Web search and fetch"
+  
+  code:
+    command: ["python", "mcp/servers/code_server.py"]
+    enabled: true
+    description: "Code execution and analysis"
+    
+  memory:
+    command: ["python", "mcp/servers/memory_server.py"]
+    enabled: true
+    description: "Veda's memory system"
+
+  # Add custom servers here:
+  # my_custom_server:
+  #   command: ["python", "mcp/servers/my_server.py"]
+  #   enabled: true

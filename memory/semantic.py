@@ -6,8 +6,9 @@
 import chromadb
 from pathlib import Path
 
-# Where to store the vector database on disk
-VECTOR_DB_PATH = "/mnt/c/Users/akhil/veda_agent/memory/vectorstore"
+# Use a relative path so it works on both Windows and WSL
+BASE_DIR = Path(__file__).resolve().parent.parent
+VECTOR_DB_PATH = str(BASE_DIR / "memory" / "vectorstore")
 
 
 class SemanticMemory:
