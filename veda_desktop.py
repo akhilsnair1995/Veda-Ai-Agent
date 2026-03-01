@@ -167,11 +167,14 @@ if st.session_state.current_session_id == "NEW" or st.session_state.current_sess
 # B. Active Chat Interface
 else:
     # Synchronize Brain Workspace
-    st.session_state.brain.system_prompt = re.sub(
-        r"AUTHORIZED WORKSPACE: Your primary working directory is '.*?'",
-        f"AUTHORIZED WORKSPACE: Your primary working directory is '{st.session_state.workspace_path}'",
-        st.session_state.brain.system_prompt
-    )
+    # We use a marker to find the line and replace it entirely to avoid regex escape issues with Windows paths
+    marker = "AUTHORIZED WORKSPACE: Your primary working directory is '"
+    lines = st.session_state.brain.system_prompt.split('\n')
+    for i, line in enumerate(lines):
+        if marker in line:
+            lines[i] = f"- AUTHORIZED WORKSPACE: Your primary working directory is '{st.session_state.workspace_path}'. Use this folder for all project files, scripts, and reports."
+            break
+    st.session_state.brain.system_prompt = '\n'.join(lines)
 
     # Determine layout: Split screen ONLY if artifact exists
     show_artifact = st.session_state.artifact.get("content") is not None
