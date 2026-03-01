@@ -55,6 +55,14 @@ def generate_chart(data_json: str, chart_type: str, title: str, save_path: str) 
     except Exception as e:
         return f"Error generating chart: {e}"
 
+def check_image_exists(path: str) -> str:
+    """Verify if a generated image file exists and return its size."""
+    p = Path(path).expanduser().resolve()
+    if p.exists() and p.is_file():
+        size_kb = p.stat().st_size / 1024
+        return f"SUCCESS: Image '{path}' exists. Size: {size_kb:.2f} KB"
+    return f"ERROR: Image '{path}' not found on disk."
+
 server.add_tool("generate_chart", "Generate a bar, line, or pie chart from JSON data and save as PNG",
     {
         "type": "object", 
@@ -66,6 +74,9 @@ server.add_tool("generate_chart", "Generate a bar, line, or pie chart from JSON 
         }, 
         "required": ["data_json", "chart_type", "title", "save_path"]
     }, generate_chart)
+
+server.add_tool("check_image_exists", "Verify if a visual asset was actually created",
+    {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}, check_image_exists)
 
 if __name__ == "__main__":
     server.run()

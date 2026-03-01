@@ -215,8 +215,24 @@ class MCPServerManager:
         if not client:
             return f"MCP server '{server_name}' not connected"
 
-        # Strip server prefix if present
-        clean_name = target_tool.replace(f"{server_name}__", "")
+        # 3. CLEANUP: Hallucinated keys and variations
+        if isinstance(params, dict):
+            # Remove 'server' key if hallucinated
+            if "server" in params:
+                params = {k: v for k, v in params.items() if k != "server"}
+            
+            # Alias common variations to 'path'
+            path_aliases = ["file_path", "image_path", "file", "target_path", "filepath", "dir_path"]
+            if "path" not in params:
+                for alias in path_aliases:
+                    if alias in params:
+                        params["path"] = params.pop(alias)
+                        break
+            
+            # Alias for 'run_python' code
+            if clean_name == "run_python" and "code" not in params:
+                if "python_code" in params:
+                    params["code"] = params.pop("python_code")
 
         try:
             return client.call_tool(clean_name, params)

@@ -12,14 +12,45 @@ from mcp.server_base import MCPServer
 
 server = MCPServer(name="code", version="1.0.0")
 
-def run_python(code: str = None, timeout: int = 10, python_code: str = None) -> str:
+def run_python(code: str = None, timeout: int = 30, python_code: str = None, file_path: str = None, path: str = None) -> str:
+    """Execute python code. Can take raw code or a path to a .py file."""
     code = code or python_code
+    target_path = file_path or path
+    
+    # If a path is provided, read the code from the file
+    if target_path:
+        try:
+            # Check relative to workspace if not absolute
+            p = Path(target_path).expanduser()
+            if not p.is_absolute():
+                # We assume the caller might be relative to the workspace defined in brain
+                # But for the server, we check locally first
+                if not p.exists():
+                    # Fallback to workspace directory if we can find it
+                    workspace = Path("C:/Users/akhil/veda_agent/workspace")
+                    p = workspace / p
+            
+            if p.exists() and p.is_file():
+                code = p.read_text(encoding="utf-8")
+            else:
+                return f"Error: File not found at {target_path}"
+        except Exception as e:
+            return f"Error reading script file: {e}"
+
     if not code:
-        return "Error: code is required."
+        return "Error: No code or file_path provided."
+
+    # Automatic Plotting Fix: Replace plt.show() with a savefig if no savefig is found
+    if "plt.show()" in code:
+        if "plt.savefig" not in code:
+            code = code.replace("plt.show()", "plt.savefig('auto_generated_plot.png')")
+        else:
+            code = code.replace("plt.show()", "# plt.show() removed for headless execution")
+
     # Sandboxed execution using a temporary file
     fd, temp_path = tempfile.mkstemp(suffix='.py')
     try:
-        with os.fdopen(fd, 'w') as f:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
             f.write(code)
         
         result = subprocess.run(
@@ -28,16 +59,14 @@ def run_python(code: str = None, timeout: int = 10, python_code: str = None) -> 
             text=True,
             timeout=timeout
         )
-        output = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        return f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
     except subprocess.TimeoutExpired:
-        output = f"Error: Execution timed out after {timeout} seconds."
+        return f"Error: Execution timed out after {timeout} seconds."
     except Exception as e:
-        output = f"Execution error: {e}"
+        return f"Execution error: {e}"
     finally:
         if os.path.exists(temp_path):
             os.unlink(temp_path)
-    
-    return output
 
 def run_shell(command: str, timeout: int = 10, confirm: bool = False) -> str:
     if not confirm:
