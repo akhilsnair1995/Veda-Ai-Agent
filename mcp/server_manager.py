@@ -38,6 +38,7 @@ class MCPServerManager:
         # Maps tool_name -> server_name for routing
         self.tool_routing: dict[str, str] = {}
         self.all_tools: dict[str, dict] = {}
+        self.init_errors: list[str] = []
 
     def load_config(self) -> dict:
         """
@@ -112,10 +113,9 @@ class MCPServerManager:
             try:
                 self._connect_server(name, server_config)
             except Exception as e:
-                console.print(
-                    f"[yellow]⚠ Could not start MCP server "
-                    f"'{name}': {e}[/yellow]"
-                )
+                error_msg = f"Could not start MCP server '{name}': {e}"
+                self.init_errors.append(error_msg)
+                console.print(f"[yellow]⚠ {error_msg}[/yellow]")
 
         total_tools = len(self.all_tools)
         console.print(

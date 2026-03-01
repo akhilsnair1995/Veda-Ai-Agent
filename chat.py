@@ -81,6 +81,14 @@ class VedaUI:
         ))
         self.console.print("\n")
 
+    def print_init_errors(self):
+        """Report any initialization failures."""
+        if self.brain.init_errors:
+            self.console.print("\n[bold red]WARNING: Some components failed to initialize:[/bold red]")
+            for err in self.brain.init_errors:
+                self.console.print(f"[yellow]⚠ {err}[/yellow]")
+            self.console.print("[dim]Veda is still operational, but some capabilities may be limited.[/dim]\n")
+
     def print_help(self):
         """Clean command list."""
         help_table = Table(title="System Commands", show_header=True, header_style="bold magenta", box=None)
@@ -297,6 +305,7 @@ def main(model):
 
     # Initial UI
     ui.print_header()
+    ui.print_init_errors()
 
     while True:
         try:

@@ -30,6 +30,7 @@ class SkillRegistry:
 
     def __init__(self):
         self.skills: dict[str, BaseSkill] = {}
+        self.init_errors: list[str] = []
         self._load_all_skills()
 
     def _load_all_skills(self):
@@ -68,10 +69,9 @@ class SkillRegistry:
                         )
 
             except Exception as e:
-                console.print(
-                    f"[yellow]⚠ Could not load skill "
-                    f"{skill_file.name}: {e}[/yellow]"
-                )
+                error_msg = f"Could not load skill {skill_file.name}: {e}"
+                self.init_errors.append(error_msg)
+                console.print(f"[yellow]⚠ {error_msg}[/yellow]")
 
         console.print(
             f"[green]✓ {loaded} skills active[/green]"

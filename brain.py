@@ -69,6 +69,7 @@ class VedaBrain:
         self.semantic_memory = SemanticMemory()
         self.skill_registry = SkillRegistry()
         self.mcp_manager = MCPServerManager()
+        self.init_errors = []
 
         # Connect to Ollama (local or Colab)
         host = self._get_host()
@@ -76,6 +77,10 @@ class VedaBrain:
 
         # Start all MCP servers
         self.mcp_manager.start_all()
+
+        # Collect errors
+        self.init_errors.extend(self.skill_registry.init_errors)
+        self.init_errors.extend(self.mcp_manager.init_errors)
 
         console.print("[bold green]✓ Veda is ready.[/bold green]")
 
