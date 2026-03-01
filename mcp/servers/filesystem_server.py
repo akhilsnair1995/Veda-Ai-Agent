@@ -123,7 +123,27 @@ def delete_file(path: str, confirm: bool = False) -> str:
         return f"Deleted {path}"
     except Exception as e:
         return f"Error deleting file: {e}"
+
+def unzip_file(zip_path: str, extract_to: str = None) -> str:
+    """Extract a zip file to a directory."""
+    try:
+        import zipfile
+        src = _resolve_and_verify(zip_path)
+        if not src.exists():
+            return f"Error: Zip file not found: {zip_path}"
+
+        target = _resolve_and_verify(extract_to) if extract_to else src.parent / src.stem
+        target.mkdir(parents=True, exist_ok=True)
+
+        with zipfile.ZipFile(src, 'r') as zip_ref:
+            zip_ref.extractall(target)
+
+        return f"Successfully extracted {zip_path} to {target}"
+    except Exception as e:
+        return f"Error extracting zip: {e}"
+
 def edit_file(path: str = None, old: str = None, new: str = None, file_path: str = None) -> str:
+
     """Surgical text replacement in a file."""
     path = path or file_path
     try:
@@ -183,6 +203,9 @@ server.add_tool("move_file", "Move or rename a file",
 
 server.add_tool("delete_file", "Delete a file or directory",
     {"type": "object", "properties": {"path": {"type": "string"}, "confirm": {"type": "boolean"}}, "required": ["path", "confirm"]}, delete_file)
+
+server.add_tool("unzip_file", "Extract a zip file to a directory",
+    {"type": "object", "properties": {"zip_path": {"type": "string"}, "extract_to": {"type": "string"}}, "required": ["zip_path"]}, unzip_file)
 
 server.add_tool("edit_file", "Surgical text replacement in a file",
     {"type": "object", "properties": {"path": {"type": "string"}, "old": {"type": "string"}, "new": {"type": "string"}}, "required": ["path", "old", "new"]}, edit_file)

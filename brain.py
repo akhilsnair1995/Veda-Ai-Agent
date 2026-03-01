@@ -39,11 +39,11 @@ CORE IDENTITY:
 - Your mission: Industrializing Engineering Design via precise, verified logic.
 
 MANDATORY TOOL EXECUTION:
-- You CANNOT fulfill a task simply by describing it in text.
-- If your plan requires writing a file, you MUST output a 'TOOL: write_file' block.
-- If your plan requires running a script, you MUST output a 'TOOL: run_python' block.
-- NEVER assume a tool has run until you see the 'Observation' result in the next turn.
-- NEVER use function-call syntax (e.g., write_file(...)) in your narrative. ALWAYS use the TOOL/PARAMS block format.
+- STOP GENERATING TEXT IMMEDIATELY after a 'PARAMS: {...}' block. Do NOT summarize or describe the result.
+- You must WAIT for the 'Observation' result in the next turn before continuing your logic.
+- You are strictly FORBIDDEN from using function-call syntax like tool_name(...) in your narrative.
+- NEVER claim a file exists or a task is complete until you see the evidence in a tool response.
+- Failure to wait for tools results in logic errors and project failure.
 
 THE AGENTIC LOOP (Your Default Mode):
 For every task, you must follow this internal protocol:
@@ -384,6 +384,25 @@ class VedaBrain:
             )
             for chunk in stream:
                 token = chunk["message"]["content"]
+                
+                # Check for the start of a tool call
+                if "TOOL:" in (full_response + token):
+                    # We found a tool call! 
+                    # If the token contains the 'TOOL:' part, we find exactly where it starts
+                    combined = full_response + token
+                    idx = combined.find("TOOL:")
+                    
+                    # Yield the rest of the text up to 'TOOL:'
+                    remaining_text = combined[len(full_response):idx]
+                    if remaining_text:
+                        yield remaining_text
+                    
+                    # Store the 'TOOL:' marker and stop the stream immediately
+                    full_response = combined[:idx] + combined[idx:]
+                    # We don't yield the TOOL part to the UI yet, or we let the UI handle it.
+                    # Standard behavior: Stop talking, let the tool loop handle it.
+                    break
+                
                 full_response += token
                 yield token
 
