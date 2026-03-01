@@ -11,6 +11,14 @@ from mcp.server_base import MCPServer
 
 server = MCPServer(name="filesystem", version="1.0.0")
 
+def _human_size(size: int) -> str:
+    """Convert bytes to human readable string."""
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
+        if size < 1024:
+            return f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} PB"
+
 def _resolve_and_verify(path: str) -> Path:
     # Basic path resolution
     p = Path(path).expanduser()
@@ -24,7 +32,12 @@ def read_file(path: str) -> str:
     p = _resolve_and_verify(path)
     if not p.exists() or not p.is_file():
         return f"File not found: {path}"
+    
     try:
+        size = p.stat().st_size
+        if size > 1_000_000:  # 1MB limit
+            return f"File is very large ({_human_size(size)}). Reading first 5000 chars:\n\n" + \
+                   p.read_text(encoding="utf-8", errors="replace")[:5000]
         return p.read_text(encoding="utf-8")
     except Exception as e:
         return f"Error reading file: {e}"

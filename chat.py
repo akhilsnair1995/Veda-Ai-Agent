@@ -100,6 +100,7 @@ class VedaUI:
         help_table.add_row("/search <query>", "Deep Compliance Search in Notes")
         help_table.add_row("/skills", "List and Manage Veda's Expert Skills")
         help_table.add_row("/mcp", "Check Status of MCP Server Integration")
+        help_table.add_row("/reload", "Reconnect to Ollama (refreshes host URL)")
         help_table.add_row("/clear", "Refresh Terminal Display")
         help_table.add_row("/help", "Show this help menu")
         help_table.add_row("/exit", "Secure System Shutdown")
@@ -109,6 +110,13 @@ class VedaUI:
     def handle_command(self, user_input: str) -> bool:
         cmd_parts = user_input.strip().split(" ", 1)
         cmd = cmd_parts[0].lower()
+
+        if cmd == "/reload":
+            self.console.print("[dim]Refreshing connection to Ollama...[/dim]")
+            # Re-fetch host and recreate client
+            self.brain.client = ollama.Client(host=self.brain._get_host())
+            self.console.print("[bold green]✓ Connection re-established.[/bold green]")
+            return True
 
         if cmd == "/model":
             try:
