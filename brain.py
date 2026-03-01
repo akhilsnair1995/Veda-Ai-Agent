@@ -97,6 +97,7 @@ class VedaBrain:
 
     def __init__(self, model: str = "qwen2.5:7b"):
         self.model = model
+        self.system_prompt = VEDA_SYSTEM_PROMPT
         self.semantic_memory = SemanticMemory()
         self.skill_registry = SkillRegistry()
         self.mcp_manager = MCPServerManager()
@@ -208,7 +209,7 @@ class VedaBrain:
         
         # Ensure system prompt is the foundation
         if not any(m.get('role') == 'system' for m in messages):
-            system_content = VEDA_SYSTEM_PROMPT
+            system_content = self.system_prompt
             schemas = self.mcp_manager.get_all_tool_schemas()
             if schemas:
                 tools_desc = "\n\nAVAILABLE TOOLS:\n"
@@ -306,13 +307,14 @@ class VedaBrain:
                 else f"[dim]→ {result}[/dim]"
             )
 
-        # 2. Ask LLM to interpret ALL results
+        # Ask LLM to interpret ALL results
         combined_results = "\n\n---\n\n".join(results)
-        
+
         interpret_messages = [
-            {"role": "system", "content": VEDA_SYSTEM_PROMPT},
+            {"role": "system", "content": self.system_prompt},
             {
                 "role": "user",
+
                 "content": (
                     f"Original Task: {original_query}\n\n"
                     f"Current Progress (Step {depth+1}):\n{combined_results}\n\n"
@@ -352,7 +354,7 @@ class VedaBrain:
         
         # Ensure system prompt is injected
         if not any(m.get('role') == 'system' for m in messages):
-            system_content = VEDA_SYSTEM_PROMPT
+            system_content = self.system_prompt
             schemas = self.mcp_manager.get_all_tool_schemas()
             if schemas:
                 tools_desc = "\n\nAVAILABLE TOOLS:\n"

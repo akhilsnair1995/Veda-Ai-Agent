@@ -167,10 +167,10 @@ if st.session_state.current_session_id == "NEW" or st.session_state.current_sess
 # B. Active Chat Interface
 else:
     # Synchronize Brain Workspace
-    st.session_state.brain.VEDA_SYSTEM_PROMPT = re.sub(
+    st.session_state.brain.system_prompt = re.sub(
         r"AUTHORIZED WORKSPACE: Your primary working directory is '.*?'",
         f"AUTHORIZED WORKSPACE: Your primary working directory is '{st.session_state.workspace_path}'",
-        st.session_state.brain.VEDA_SYSTEM_PROMPT
+        st.session_state.brain.system_prompt
     )
 
     # Determine layout: Split screen ONLY if artifact exists
