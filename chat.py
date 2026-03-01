@@ -292,6 +292,9 @@ def main(model):
     brain = VedaBrain(model=model)
     ui = VedaUI(console, brain, session_id)
 
+    # Clear screen before showing dashboard
+    console.clear()
+
     # Initial UI
     ui.print_header()
 
