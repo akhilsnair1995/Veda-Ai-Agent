@@ -98,58 +98,119 @@ class VedaUI:
         cmd = cmd_parts[0].lower()
 
         if cmd == "/model":
-            if len(cmd_parts) < 2:
-                self.console.print(f"[yellow]Current model: {self.brain.model}[/yellow]")
+            try:
+                models_resp = self.brain.client.list()
+                # Handle different ollama-python library versions
+                models = models_resp.get('models', []) if isinstance(models_resp, dict) else models_resp.models
+                
+                if not models:
+                    self.console.print("[yellow]No models found in Ollama.[/yellow]")
+                    return True
+
+                table = Table(title="Available Ollama Models", show_header=True, header_style="bold magenta")
+                table.add_column("#", style="dim", width=4)
+                table.add_column("Model Name", style="yellow")
+                table.add_column("Size", style="green")
+
+                for i, m in enumerate(models, 1):
+                    # Handle different object types from ollama list
+                    name = m.get('name') if isinstance(m, dict) else m.model
+                    size_bytes = m.get('size') if isinstance(m, dict) else m.size
+                    size_gb = f"{size_bytes / (1024**3):.2f} GB"
+                    table.add_row(str(i), name, size_gb)
+
+                self.console.print(table)
+                choice = self.console.input("[bold cyan]Select model # (or press Enter to cancel): [/bold cyan]").strip()
+                
+                if choice.isdigit() and 1 <= int(choice) <= len(models):
+                    selected = models[int(choice)-1]
+                    new_model = selected.get('name') if isinstance(selected, dict) else selected.model
+                    self.console.print(f"[bold yellow]Switching to {new_model}...[/bold yellow]")
+                    self.brain.model = new_model
+                    self.console.print(f"[bold green]✓ Model active.[/bold green]")
                 return True
-            new_model = cmd_parts[1].strip()
-            self.console.print(f"[bold yellow]Switching model to {new_model}...[/bold yellow]")
-            self.brain.model = new_model
-            self.console.print(f"[bold green]✓ Model active.[/bold green]")
-            return True
+            except Exception as e:
+                self.console.print(f"[red]Error listing models: {e}[/red]")
+                return True
 
         elif cmd == "/notes":
             notes = get_all_notes()
             if not notes:
-                self.console.print("[yellow]Memory is currently empty.[/yellow]")
-            else:
-                self.console.print(f"\n[bold magenta]Veda's Knowledge Base ({len(notes)} records)[/bold magenta]\n")
-                for note in notes:
-                    self.console.print(Panel(
-                        note['content'],
-                        title=f"[bold]{note['title']}[/bold]",
-                        subtitle=f"[dim]{note['time']}[/dim]",
-                        border_style="dim"
-                    ))
+                self.console.print("[yellow]No notes found in memory.[/yellow]")
+                return True
+            
+            table = Table(title="Veda's Engineering Notes", show_header=True, header_style="bold magenta")
+            table.add_column("#", style="dim", width=4)
+            table.add_column("Title", style="yellow")
+            table.add_column("Created", style="dim")
+
+            for i, n in enumerate(notes, 1):
+                table.add_row(str(i), n['title'], n['time'])
+            
+            self.console.print(table)
+            choice = self.console.input("[bold cyan]Select note # to read (or Enter to cancel): [/bold cyan]").strip()
+            
+            if choice.isdigit() and 1 <= int(choice) <= len(notes):
+                selected = notes[int(choice)-1]
+                self.console.print(Panel(
+                    selected['content'],
+                    title=f"[bold]{selected['title']}[/bold]",
+                    border_style="magenta"
+                ))
             return True
 
         elif cmd == "/skills":
-            # For now, list the skills directory or known personas
-            self.console.print(f"\n[bold cyan]VEDA ACTIVE SKILLS[/bold cyan]\n")
-            skills_table = Table(show_header=True, header_style="bold cyan", box=None)
-            skills_table.add_column("Skill Name", style="yellow")
-            skills_table.add_column("Status", style="green")
+            skills = self.brain.skill_registry.skills
+            table = Table(title="Veda's Active Expertise", show_header=True, header_style="bold cyan")
+            table.add_column("#", style="dim", width=4)
+            table.add_column("Expertise", style="yellow")
+            table.add_column("Domain", style="dim")
+
+            for i, (name, skill) in enumerate(skills.items(), 1):
+                table.add_row(str(i), skill.metadata.name, skill.metadata.domain)
             
-            skills_table.add_row("Core Engineering Logic", "ACTIVE")
-            skills_table.add_row("VMC Compliance Auditor", "STANDBY")
-            skills_table.add_row("MCP Server Architect", "ACTIVE")
+            self.console.print(table)
+            choice = self.console.input("[bold cyan]Select # for details (or Enter to cancel): [/bold cyan]").strip()
             
-            self.console.print(skills_table)
-            self.console.print(f"\n[dim italic]Use 'Draft a skill for...' to create new expertises.[/dim italic]")
+            if choice.isdigit() and 1 <= int(choice) <= len(skills):
+                skill_name = list(skills.keys())[int(choice)-1]
+                skill = skills[skill_name]
+                self.console.print(Panel(
+                    f"[bold yellow]Description:[/bold yellow] {skill.metadata.description}\n"
+                    f"[bold yellow]Triggers:[/bold yellow] {', '.join(skill.metadata.trigger_keywords)}",
+                    title=f"[bold cyan]{skill.metadata.name}[/bold cyan]",
+                    border_style="cyan"
+                ))
             return True
 
         elif cmd == "/mcp":
-            self.console.print(f"\n[bold magenta]MCP SERVER ECOSYSTEM[/bold magenta]\n")
-            mcp_table = Table(show_header=True, header_style="bold magenta", box=None)
-            mcp_table.add_column("Server", style="yellow")
-            mcp_table.add_column("Protocol", style="dim")
-            mcp_table.add_column("Status", style="green")
+            servers = self.brain.mcp_manager.clients
+            table = Table(title="Connected MCP Servers", show_header=True, header_style="bold magenta")
+            table.add_column("#", style="dim", width=4)
+            table.add_column("Server", style="yellow")
+            table.add_column("Tools", style="green")
+
+            for i, name in enumerate(servers.keys(), 1):
+                # Count tools for this server
+                count = len([t for t, s in self.brain.mcp_manager.tool_routing.items() if s == name and "__" in t])
+                table.add_row(str(i), name, str(count))
             
-            mcp_table.add_row("Local Filesystem", "stdio", "CONNECTED")
-            mcp_table.add_row("Web Search Engine", "SSE", "CONNECTED")
-            mcp_table.add_row("Revit Production", "stdio", "DISCONNECTED")
+            self.console.print(table)
+            choice = self.console.input("[bold cyan]Select server # to list tools (or Enter to cancel): [/bold cyan]").strip()
             
-            self.console.print(mcp_table)
-            self.console.print(f"\n[dim]Configure servers in config/mcp_servers.json[/dim]")
+            if choice.isdigit() and 1 <= int(choice) <= len(servers):
+                server_name = list(servers.keys())[int(choice)-1]
+                tools = [t for t, s in self.brain.mcp_manager.tool_routing.items() if s == server_name and "__" in t]
+                
+                tool_table = Table(title=f"Tools for {server_name}", show_header=True)
+                tool_table.add_column("Tool Name", style="yellow")
+                tool_table.add_column("Description", style="dim")
+                
+                for t in tools:
+                    schema = self.brain.mcp_manager.all_tools.get(t, {})
+                    tool_table.add_row(t.replace(f"{server_name}__", ""), schema.get('description', ''))
+                
+                self.console.print(tool_table)
             return True
 
         elif cmd == "/search":
