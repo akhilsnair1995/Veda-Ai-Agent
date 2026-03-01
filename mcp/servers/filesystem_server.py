@@ -116,6 +116,27 @@ def delete_file(path: str, confirm: bool = False) -> str:
     except Exception as e:
         return f"Error deleting file: {e}"
 
+def edit_file(path: str, old: str, new: str) -> str:
+    """Surgical text replacement in a file."""
+    try:
+        p = _resolve_and_verify(path)
+        if not p.exists():
+            return f"File not found: {path}"
+        content = p.read_text(encoding="utf-8")
+        
+        if old not in content:
+            return f"ERROR: Exact text to replace not found in {path}. Ensure 'old' string matches exactly."
+        
+        count = content.count(old)
+        if count > 1:
+            return f"ERROR: Found {count} occurrences of the text. Please provide more context to make the replacement unique."
+            
+        new_content = content.replace(old, new)
+        p.write_text(new_content, encoding="utf-8")
+        return f"Successfully edited {path}. Replaced 1 occurrence."
+    except Exception as e:
+        return f"Error editing file: {e}"
+
 def get_file_info(path: str) -> str:
     try:
         p = _resolve_and_verify(path)
@@ -146,6 +167,9 @@ server.add_tool("move_file", "Move or rename a file",
 
 server.add_tool("delete_file", "Delete a file or directory",
     {"type": "object", "properties": {"path": {"type": "string"}, "confirm": {"type": "boolean"}}, "required": ["path", "confirm"]}, delete_file)
+
+server.add_tool("edit_file", "Surgical text replacement in a file",
+    {"type": "object", "properties": {"path": {"type": "string"}, "old": {"type": "string"}, "new": {"type": "string"}}, "required": ["path", "old", "new"]}, edit_file)
 
 server.add_tool("get_file_info", "Get file metadata",
     {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}, get_file_info)
