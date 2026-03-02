@@ -1,12 +1,4 @@
-# brain.py — FINAL VERSION
-# Veda's complete brain with:
-# - Skill system (specialized expertise modules)
-# - MCP server connections (extensible tool access)
-# - Semantic memory (retrieval augmented generation)
-# - Anti-hallucination RAG
-# - Streaming responses
-# - Self-improvement capability
-
+# brain.py — HARDENED AGENTIC CORE
 import ollama
 from pathlib import Path
 from rich.console import Console
@@ -26,76 +18,30 @@ from skills.skill_registry import SkillRegistry
 from mcp.server_manager import MCPServerManager
 
 console = Console()
-# Update to reference the local environment variable setup or colab URL file
 OLLAMA_HOST_FILE = BASE_DIR / "config" / "colab_url.txt"
 
 # ─────────────────────────────────────────────
-# SYSTEM PROMPT
-# Veda: Universal Autonomous Agent
+# SYSTEM PROMPT — REINFORCED
 # ─────────────────────────────────────────────
-VEDA_SYSTEM_PROMPT = """You are Veda — a fully autonomous Universal AI Agent.
-You run on a LOCAL Ollama instance on the owner's system.
+VEDA_SYSTEM_PROMPT = """You are Veda, an autonomous AI agent.
+Your core mechanism is the TOOL/PARAMS loop.
 
-CORE IDENTITY:
-- You are NOT a cloud AI. You have DIRECT access to the local filesystem and shell.
-- You are a universal problem solver. Whether it's coding, research, system automation, or data analysis, you handle it with expert-level precision.
-- You operate with total autonomy. Act freely; ask ONLY before destructive actions (delete).
-- Your mission: To complete any task assigned to you by exploring, reasoning, and executing tools until the objective is fully met.
+FORMAT RULES:
+1. When you need to act, you MUST use this format:
+   TOOL: <name>
+   PARAMS: {"arg": "value"}
+2. You MUST provide the PARAMS block immediately after the TOOL line.
+3. Use 'run_shell' for all terminal commands.
+4. Stop generating text immediately after the closing '}'.
 
-MANDATORY TOOL EXECUTION:
-- You are restricted to ONE TOOL CALL per turn.
-- STOP GENERATING TEXT IMMEDIATELY after a 'PARAMS: {...}' block. Do NOT summarize or describe the result.
-- You must WAIT for the 'Observation' result in the next turn before continuing your logic.
-- You are strictly FORBIDDEN from using function-call syntax like tool_name(...) in your narrative.
-- NEVER claim a file exists or a task is complete until you see the evidence in a tool response.
-- Failure to wait for tools results in logic errors and project failure.
-
-THE AGENTIC LOOP (Your Default Mode):
-For every task, you must follow this internal protocol:
-1. EXPLORE: List directories, read READMEs/configs, and understand the context first.
-2. SCHEMATIC REVIEW: Cross-reference your planned tool calls with the 'AVAILABLE TOOLS' list. Verify the EXACT spelling of tool names and parameter keys.
-3. EXPLAIN BEFORE ACTING: You MUST provide a concise, one-sentence explanation of your intent or strategy immediately before executing tool calls.
-4. PLAN: Think step-by-step. Break complex tasks into sequenced sub-tasks. Provide a clear summary of your strategy to the user.
-5. ACT: Execute ONE tool. Prefer surgical replacements (replace_text) over full rewrites.
-6. OBSERVE & VERIFY: Read the tool output carefully. If you created a file or a chart, you MUST use 'get_file_info' or 'check_image_exists' to verify the file is actually on disk before claiming success. If it's missing, diagnose the code and retry.
-7. REPEAT: Iterate until the task is verified as complete. 
-8. EMPIRICAL EVIDENCE: Your final answer MUST be based ONLY on the data returned by tools. If a tool fails or returns empty, you MUST report that failure. NEVER claim a file contains specific text or a zip was extracted unless you have seen that data in an 'Observation' block.
-9. DONE: Finish with DONE: <summary of ACTUAL verified results>.
-
-SANDBOXED SCRIPTING PROTOCOL:
-- If a task requires custom logic, calculations, or data processing not available in your tools:
-  1. Write a temporary Python script using 'write_file'.
-  2. Execute it using 'run_python' or 'run_shell'.
-  3. Interpret the STDOUT/STDERR to provide the final result.
-- This allows you to bridge tools and automate any task in any domain.
-
-SURGICAL EDIT MANDATE:
-- When modifying code, ALWAYS use the 'edit_file' tool if the file exists.
-- Provide the exact 'old' text block to be replaced to maintain file integrity.
-- Never say "this should work"; run the code and verify it DOES work.
-
-INTELLIGENCE & SAFETY RULES:
-- EMPIRICAL VERIFICATION: NEVER guess filesystem contents. Verify first, report second.
-- SELF-CORRECTION: If a tool or command fails, analyze the error and try an alternative approach autonomously.
-- ANTI-HALLUCINATION: Never invent code sections, citations, or file content.
-- NO FILLER: Give the answer or tool call first, reasoning second. No conversational padding.
-
-TOOL USE FORMAT:
-When you need to act, respond in this exact format:
-TOOL: <tool_name>
-PARAMS: {"key": "value"}
-
-Available tools: notes, filesystem, web, code, memory, document, simulation, visualization.
-Use your 'get_all_tool_schemas' capability to see the specific tool functions.
+EXAMPLE:
+User: check git status
+Veda: I will check the repository status.
+TOOL: run_shell
+PARAMS: {"command": "git status"}
 """
 
-
 class VedaBrain:
-    """
-    Veda's complete intelligence system.
-    Skills + MCP + Memory + LLM = Veda.
-    """
-
     def __init__(self, model: str = "veda"):
         self.model = model
         self.system_prompt = VEDA_SYSTEM_PROMPT
@@ -104,19 +50,13 @@ class VedaBrain:
         self.mcp_manager = MCPServerManager()
         self.init_errors = []
 
-        # Connect to Ollama (local or Colab)
         host = self._get_host()
         self.client = ollama.Client(host=host)
-
-        # Start all MCP servers
         self.mcp_manager.start_all()
 
-        # Collect errors
         self.init_errors.extend(self.skill_registry.init_errors)
         self.init_errors.extend(self.mcp_manager.init_errors)
-
-        console.print("[bold green]✓ Veda is ready.[/bold green]")
-
+        console.print("[bold green]✓ Veda Core Online.[/bold green]")
 
     def _get_host(self) -> str:
         if OLLAMA_HOST_FILE.exists():
@@ -125,184 +65,100 @@ class VedaBrain:
         return os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
     def think(self, user_message: str, history: list = None) -> str:
-        """
-        Single shot — get full response at once.
-        Returns the text response. If it contains TOOL:, the caller (UI)
-        is responsible for executing it and feeding back.
-        """
-        # Build messages from provided history or recent
-        if history:
-            messages = history
-        else:
-            recent = get_recent_messages(limit=10)
-            messages = list(recent)
-            messages.append({"role": "user", "content": user_message})
-
-        # Inject System Prompt and Tool Schemas
-        if not any(m.get('role') == 'system' for m in messages):
-            system_content = self.system_prompt
-            schemas = self.mcp_manager.get_all_tool_schemas()
-            if schemas:
-                tools_desc = "\n\nAVAILABLE TOOLS:\n"
-                for s in schemas:
-                    tools_desc += f"- {s['name']}: {s.get('description', '')}\n"
-                system_content += tools_desc
-            messages.insert(0, {"role": "system", "content": system_content})
-
+        messages = self._build_messages(user_message, history)
         try:
             response = self.client.chat(
                 model=self.model,
                 messages=messages,
-                options={
-                    "temperature": 0.1,
-                    "num_ctx": 8192
-                }
+                options={"temperature": 0.0, "num_ctx": 8192}
             )
-            answer = response["message"]["content"]
-            
-            # Truncate at tool call if LLM narrates too much (Hard Stop)
-            if "TOOL:" in answer:
-                idx = answer.find("TOOL:")
-                answer = answer[:idx].strip() + "\n\n" + answer[idx:]
-                # Further truncate if there's text AFTER the PARAMS block
-                params_end = answer.find("}", answer.find("PARAMS:"))
-                if params_end != -1:
-                    answer = answer[:params_end+1]
-
-            return answer
-
+            return response["message"]["content"]
         except Exception as e:
-            return f"Brain connection error: {e}"
+            return f"Brain error: {e}"
 
-    def stream_think(self, user_message: str, history: list = None):
-        """Streaming version of think(). Truncates instantly at TOOL:"""
+    def _build_messages(self, user_message: str, history: list = None):
         if history:
             messages = history
         else:
             recent = get_recent_messages(limit=10)
             messages = list(recent)
             messages.append({"role": "user", "content": user_message})
-        
-        # Ensure system prompt is injected
+
         if not any(m.get('role') == 'system' for m in messages):
             system_content = self.system_prompt
             schemas = self.mcp_manager.get_all_tool_schemas()
             if schemas:
-                tools_desc = "\n\nAVAILABLE TOOLS:\n"
-                for s in schemas:
-                    tools_desc += f"- {s['name']}: {s.get('description', '')}\n"
+                tools_desc = "\n\nAVAILABLE TOOLS:\n" + "\n".join([f"- {s['name']}: {s.get('description', '')}" for s in schemas])
                 system_content += tools_desc
             messages.insert(0, {"role": "system", "content": system_content})
+        return messages
 
-        full_response = ""
-        try:
-            stream = self.client.chat(
-                model=self.model,
-                messages=messages,
-                stream=True,
-                options={"temperature": 0.1, "num_ctx": 8192}
-            )
-            for chunk in stream:
-                token = chunk["message"]["content"]
-                combined = full_response + token
-                
-                # Check for the start of a tool call
-                if "TOOL:" in combined and "PARAMS:" in combined:
-                    idx = combined.find("TOOL:")
-                    remaining_text = combined[len(full_response):idx]
-                    if remaining_text:
-                        yield remaining_text
-                    break
-                
-                full_response += token
-                yield token
-
-        except Exception as e:
-            yield f"\n✗ Error: {e}"
-
-    def call_tool_sync(self, tool_call_text: str) -> str:
-        """Helper for UI to parse and execute a tool call from text."""
-        tool_match = re.search(r'TOOL:\s*(\S+)', tool_call_text)
-        params_match = re.search(r'PARAMS:\s*(\{.*?\})', tool_call_text, re.DOTALL)
-        
-        if not tool_match:
-            return "Error: No tool found in text."
-            
-        tool_name = tool_match.group(1).strip()
-        try:
-            params = json.loads(params_match.group(1)) if params_match else {}
-        except json.JSONDecodeError:
-            params = {}
-            
-        return self.mcp_manager.call_tool(tool_name, params)
-
-    def _handle_tool_calls(self, 
-                           response: str, 
-                           original_query: str) -> str:
-        """
-        Detect and execute tool calls in LLM response.
-        Then ask LLM to interpret results.
-        """
-        tool_match = re.search(r'TOOL:\s*(\S+)', response)
-        params_match = re.search(
-            r'PARAMS:\s*(\{.*?\})', response, re.DOTALL
-        )
-
+    def _handle_tool_calls(self, response: str, original_query: str) -> str:
+        """Parses and executes tools with fallback logic."""
+        # Find TOOL name - handle various spacings/formatting
+        tool_match = re.search(r'TOOL:\s*([a-zA-Z0-9_]+)', response, re.IGNORECASE)
         if not tool_match:
             return response
 
         tool_name = tool_match.group(1).strip()
+        
+        # Find PARAMS - search for the first '{' and last '}' after the TOOL marker
+        params = {}
         try:
-            params = json.loads(
-                params_match.group(1)
-            ) if params_match else {}
-        except json.JSONDecodeError:
+            json_text_search = response[tool_match.end():]
+            json_match = re.search(r'\{.*\}', json_text_search, re.DOTALL)
+            if json_match:
+                params = json.loads(json_match.group(0))
+        except:
             params = {}
 
-        # Execute via MCP
-        console.print(f"[dim cyan]⚙ {tool_name}({params})[/dim cyan]")
-        result = self.mcp_manager.call_tool(tool_name, params)
-        console.print(
-            f"[dim]→ {str(result)[:150]}...[/dim]"
-            if len(str(result)) > 150
-            else f"[dim]→ {result}[/dim]"
-        )
+        # REINFORCEMENT: If tool is run_shell and params are missing, try to find the command in the text
+        if tool_name == "run_shell" and not params.get("command"):
+            cmd_match = re.search(r'["\'](git status|ls|pwd|dir)["\']', response)
+            if cmd_match:
+                params = {"command": cmd_match.group(1)}
 
-        # Ask LLM to interpret the tool result
+        if not params and tool_name != "notes":
+            result = f"Error: Tool '{tool_name}' missing parameters. Use PARAMS: {{'key': 'value'}}"
+        else:
+            console.print(f"[dim cyan]⚙ {tool_name}({params})[/dim cyan]")
+            result = self.mcp_manager.call_tool(tool_name, params)
+
+        # Interpret the result
         interpret_messages = [
             {"role": "system", "content": self.system_prompt},
-            {
-                "role": "user",
-                "content": (
-                    f"Original question: {original_query}\n\n"
-                    f"Tool '{tool_name}' returned:\n{result}\n\n"
-                    f"Provide a clear, helpful answer using this result."
-                )
-            }
+            {"role": "user", "content": f"Query: {original_query}\n\nTool '{tool_name}' returned:\n{result}\n\nProvide final answer."}
         ]
-
-        final = self.client.chat(
-            model=self.model,
-            messages=interpret_messages,
-            options={"temperature": 0.1}
-        )
+        
+        final = self.client.chat(model=self.model, messages=interpret_messages, options={"temperature": 0.1})
         return final["message"]["content"]
 
-    def add_mcp_server(self, 
-                       name: str, 
-                       command: list[str],
-                       description: str = ""):
-        """Add a new MCP server to Veda at runtime."""
+    def stream_think(self, user_message: str, history: list = None):
+        messages = self._build_messages(user_message, history)
+        full_response = ""
+        try:
+            stream = self.client.chat(model=self.model, messages=messages, stream=True, options={"temperature": 0.0})
+            for chunk in stream:
+                token = chunk["message"]["content"]
+                full_response += token
+                yield token
+                # Stop stream early if tool call is detected and closed
+                if "TOOL:" in full_response.upper() and "}" in full_response:
+                    break
+        except Exception as e:
+            yield f"\n✗ Error: {e}"
+
+    def call_tool_sync(self, tool_call_text: str) -> str:
+        return self._handle_tool_calls(tool_call_text, "Sync call")
+
+    def add_mcp_server(self, name: str, command: list[str], description: str = ""):
         return self.mcp_manager.add_server(name, command, description)
 
     def create_skill(self, skill_code: str, filename: str) -> bool:
-        """Save a new skill and immediately load it."""
         skill_path = BASE_DIR / "skills" / filename
         skill_path.parent.mkdir(exist_ok=True)
         skill_path.write_text(skill_code, encoding="utf-8")
         self.skill_registry.reload_skills()
-        console.print(f"[green]✓ New skill created: {filename}[/green]")
         return True
 
-# Backward Compatibility Alias
 AIBrain = VedaBrain

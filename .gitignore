@@ -1,13 +1,25 @@
 # Python
 venv/
+venv_win/
 __pycache__/
 *.pyc
 .env
 
-# Databases & Vectorstores (Veda's Memory)
+# Databases & Vectorstores (Veda's Personal Memory)
+# We ignore these so users don't overwrite each other's memories
 memory/*.db
 memory/vectorstore/
 logs/
 notes/
-persona/veda_profile.json
+workspace/
+
+# Training artifacts
+Veda Training/
+veda_master_training.md
+veda_agentic.md
 FIRST_WORDS.txt
+agentic_verification.txt
+
+# Keep the universal knowledge, but ignore personal profile if desired
+# Actually, the base profile is a good template. We can track it.
+# persona/veda_profile.json

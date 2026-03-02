@@ -68,9 +68,9 @@ def run_python(code: str = None, timeout: int = 30, python_code: str = None, fil
         if os.path.exists(temp_path):
             os.unlink(temp_path)
 
-def run_shell(command: str, timeout: int = 10, confirm: bool = False) -> str:
+def run_shell(command: str, timeout: int = 10, confirm: bool = True) -> str:
     if not confirm:
-        return "Must provide confirm=True to run shell commands."
+        return "Command cancelled by user (confirm=False)."
     
     # Block obviously dangerous commands
     dangerous = ["rm -rf /", "mkfs", "dd if=", "> /dev/sda"]
@@ -161,7 +161,7 @@ def git_diff(repo_path: str = ".") -> str:
 server.add_tool("run_python", "Execute python code safely",
     {"type": "object", "properties": {"code": {"type": "string"}, "timeout": {"type": "integer"}}, "required": ["code"]}, run_python)
 server.add_tool("run_shell", "Run a shell command",
-    {"type": "object", "properties": {"command": {"type": "string"}, "timeout": {"type": "integer"}, "confirm": {"type": "boolean"}}, "required": ["command", "confirm"]}, run_shell)
+    {"type": "object", "properties": {"command": {"type": "string"}, "timeout": {"type": "integer"}, "confirm": {"type": "boolean"}}, "required": ["command"]}, run_shell)
 server.add_tool("lint_python", "Lint a python file",
     {"type": "object", "properties": {"filepath": {"type": "string"}}, "required": ["filepath"]}, lint_python)
 server.add_tool("format_python", "Format a python file using Black",
