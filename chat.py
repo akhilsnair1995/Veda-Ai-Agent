@@ -49,9 +49,9 @@ class VedaUI:
         
         # 1. Branding Text
         branding_text = Text.assemble(
-            ("\n  INDUSTRIALIZING ENGINEERING DESIGN\n", "bold white"),
-            ("  Independent MEP Intelligence System\n", "italic dim cyan"),
-            ("  Precision MEP Framework 1.0\n", "bold magenta")
+            ("\n  UNIVERSAL AUTONOMOUS INTELLIGENCE\n", "bold white"),
+            ("  Agentic Problem Solving & Execution\n", "italic dim cyan"),
+            ("  Local Autonomy Framework 2.0\n", "bold magenta")
         )
 
         # 2. Stats & Status Table
@@ -63,7 +63,7 @@ class VedaUI:
             host_display = "[yellow]LOCAL[/yellow]"
 
         status_table = Table(show_header=False, border_style="dim", box=None, padding=(0, 2))
-        status_table.add_row("[bold magenta]CORE[/bold magenta]", "[white]STRICT-FACTUAL[/white]")
+        status_table.add_row("[bold magenta]CORE[/bold magenta]", "[white]UNIVERSAL-AGENT[/white]")
         status_table.add_row("[bold magenta]MODEL[/bold magenta]", f"{self.brain.model}")
         status_table.add_row("[bold magenta]SYNC[/bold magenta]", host_display)
         status_table.add_row("[bold magenta]DB[/bold magenta]", f"{notes_count} Notes | Vector Active")
@@ -75,7 +75,7 @@ class VedaUI:
         self.console.print("\n")
         self.console.print(header_table)
         self.console.print(Panel.fit(
-            "[green]Status:[/green] [blink]READY[/blink] | [dim]Industrializing MEP production via high-fidelity logic.[/dim]\n"
+            "[green]Status:[/green] [blink]READY[/blink] | [dim]Exploring, reasoning, and executing tasks autonomously.[/dim]\n"
             "[bold cyan]Session:[/bold cyan] [dim]" + self.session_id + "[/dim] | Type [yellow]/help[/yellow] for commands.",
             border_style="magenta"
         ))

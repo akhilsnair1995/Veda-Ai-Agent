@@ -31,16 +31,16 @@ OLLAMA_HOST_FILE = BASE_DIR / "config" / "colab_url.txt"
 
 # ─────────────────────────────────────────────
 # SYSTEM PROMPT
-# Veda now knows exactly what she is
+# Veda: Universal Autonomous Agent
 # ─────────────────────────────────────────────
-VEDA_SYSTEM_PROMPT = """You are Veda — a fully autonomous Digital Senior Engineer and Agentic System.
-You run on a LOCAL Ollama instance on the owner's Linux system.
+VEDA_SYSTEM_PROMPT = """You are Veda — a fully autonomous Universal AI Agent.
+You run on a LOCAL Ollama instance on the owner's system.
 
 CORE IDENTITY:
 - You are NOT a cloud AI. You have DIRECT access to the local filesystem and shell.
-- AUTHORIZED WORKSPACE: Your primary working directory is 'C:\\Users\\akhil\\veda_agent\\workspace'. Use this folder for all project files, scripts, and reports.
+- You are a universal problem solver. Whether it's coding, research, system automation, or data analysis, you handle it with expert-level precision.
 - You operate with total autonomy. Act freely; ask ONLY before destructive actions (delete).
-- Your mission: Industrializing Engineering Design via precise, verified logic.
+- Your mission: To complete any task assigned to you by exploring, reasoning, and executing tools until the objective is fully met.
 
 MANDATORY TOOL EXECUTION:
 - You are restricted to ONE TOOL CALL per turn.
@@ -67,7 +67,7 @@ SANDBOXED SCRIPTING PROTOCOL:
   1. Write a temporary Python script using 'write_file'.
   2. Execute it using 'run_python' or 'run_shell'.
   3. Interpret the STDOUT/STDERR to provide the final result.
-- This allows you to bridge tools and automate any task.
+- This allows you to bridge tools and automate any task in any domain.
 
 SURGICAL EDIT MANDATE:
 - When modifying code, ALWAYS use the 'edit_file' tool if the file exists.
@@ -96,16 +96,13 @@ class VedaBrain:
     Skills + MCP + Memory + LLM = Veda.
     """
 
-    def __init__(self, model: str = "qwen2.5:7b"):
+    def __init__(self, model: str = "veda"):
         self.model = model
         self.system_prompt = VEDA_SYSTEM_PROMPT
         self.semantic_memory = SemanticMemory()
         self.skill_registry = SkillRegistry()
         self.mcp_manager = MCPServerManager()
         self.init_errors = []
-
-        # Load hardcoded foundational knowledge
-        self._load_core_knowledge()
 
         # Connect to Ollama (local or Colab)
         host = self._get_host()
@@ -119,50 +116,6 @@ class VedaBrain:
         self.init_errors.extend(self.mcp_manager.init_errors)
 
         console.print("[bold green]✓ Veda is ready.[/bold green]")
-
-    def _load_core_knowledge(self):
-        """Loads hardcoded engineering knowledge into semantic memory if it's missing."""
-        knowledge_file = BASE_DIR / "knowledge" / "core_knowledge.json"
-        if not knowledge_file.exists():
-            return
-            
-        try:
-            with open(knowledge_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                
-            if self.semantic_memory.collection.count() > 0:
-                return
-                
-            console.print("[dim]Loading foundational engineering knowledge...[/dim]")
-            loaded = 0
-            for category, items in data.items():
-                for item in items:
-                    if category == "mcp_tool_schemas":
-                        # Handle the schema structure
-                        server = item.get('server', 'unknown')
-                        tools = item.get('tools', [])
-                        examples = [f"{t['name']}: {t.get('example', '')}" for t in tools if 'example' in t]
-                        content = f"[SCHEMA] MCP Server '{server}' tools: " + \
-                                  ", ".join([f"{t['name']}({', '.join(t['params'])})" for t in tools])
-                        if examples:
-                            content += "\nEXAMPLES:\n" + "\n".join(examples)
-                    elif category == "mcp_category_mappings":
-                        # Handle category mapping
-                        cat = item.get('category', 'unknown')
-                        tool = item.get('primary_tool', 'unknown')
-                        content = f"[MAPPING] Category '{cat}' is handled by tool: '{tool}'. {item.get('description', '')}"
-                    else:
-                        # Handle the topic/content structure
-                        topic = item.get('topic', 'General')
-                        body = item.get('content', '')
-                        content = f"[{category.upper()}] {topic}: {body}"
-                    
-                    self.semantic_memory.store(content, metadata={"source": "core_knowledge", "category": category})
-                    loaded += 1
-            console.print(f"[dim]✓ Seeded {loaded} core principles into memory.[/dim]")
-            
-        except Exception as e:
-            self.init_errors.append(f"Failed to load core knowledge: {e}")
 
 
     def _get_host(self) -> str:
@@ -282,6 +235,58 @@ class VedaBrain:
             params = {}
             
         return self.mcp_manager.call_tool(tool_name, params)
+
+    def _handle_tool_calls(self, 
+                           response: str, 
+                           original_query: str) -> str:
+        """
+        Detect and execute tool calls in LLM response.
+        Then ask LLM to interpret results.
+        """
+        tool_match = re.search(r'TOOL:\s*(\S+)', response)
+        params_match = re.search(
+            r'PARAMS:\s*(\{.*?\})', response, re.DOTALL
+        )
+
+        if not tool_match:
+            return response
+
+        tool_name = tool_match.group(1).strip()
+        try:
+            params = json.loads(
+                params_match.group(1)
+            ) if params_match else {}
+        except json.JSONDecodeError:
+            params = {}
+
+        # Execute via MCP
+        console.print(f"[dim cyan]⚙ {tool_name}({params})[/dim cyan]")
+        result = self.mcp_manager.call_tool(tool_name, params)
+        console.print(
+            f"[dim]→ {str(result)[:150]}...[/dim]"
+            if len(str(result)) > 150
+            else f"[dim]→ {result}[/dim]"
+        )
+
+        # Ask LLM to interpret the tool result
+        interpret_messages = [
+            {"role": "system", "content": self.system_prompt},
+            {
+                "role": "user",
+                "content": (
+                    f"Original question: {original_query}\n\n"
+                    f"Tool '{tool_name}' returned:\n{result}\n\n"
+                    f"Provide a clear, helpful answer using this result."
+                )
+            }
+        ]
+
+        final = self.client.chat(
+            model=self.model,
+            messages=interpret_messages,
+            options={"temperature": 0.1}
+        )
+        return final["message"]["content"]
 
     def add_mcp_server(self, 
                        name: str, 

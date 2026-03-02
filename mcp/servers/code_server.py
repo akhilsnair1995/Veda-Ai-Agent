@@ -149,13 +149,13 @@ def search_code(directory: str, query: str, language: str = "*") -> str:
     except Exception as e:
         return f"Search error: {e}"
 
-def git_status(repo_path: str) -> str:
+def git_status(repo_path: str = ".") -> str:
     return run_shell(f"git -C {repo_path} status --short", confirm=True)
 
-def git_log(repo_path: str, limit: int = 5) -> str:
+def git_log(repo_path: str = ".", limit: int = 5) -> str:
     return run_shell(f"git -C {repo_path} log -n {limit} --oneline", confirm=True)
 
-def git_diff(repo_path: str) -> str:
+def git_diff(repo_path: str = ".") -> str:
     return run_shell(f"git -C {repo_path} diff", confirm=True)
 
 server.add_tool("run_python", "Execute python code safely",
@@ -171,11 +171,11 @@ server.add_tool("analyze_file", "AST analysis of a Python file",
 server.add_tool("search_code", "Search code in a directory",
     {"type": "object", "properties": {"directory": {"type": "string"}, "query": {"type": "string"}, "language": {"type": "string"}}, "required": ["directory", "query"]}, search_code)
 server.add_tool("git_status", "Get git status",
-    {"type": "object", "properties": {"repo_path": {"type": "string"}}, "required": ["repo_path"]}, git_status)
+    {"type": "object", "properties": {"repo_path": {"type": "string"}}}, git_status)
 server.add_tool("git_log", "Get recent git commits",
-    {"type": "object", "properties": {"repo_path": {"type": "string"}, "limit": {"type": "integer"}}, "required": ["repo_path"]}, git_log)
+    {"type": "object", "properties": {"repo_path": {"type": "string"}, "limit": {"type": "integer"}}}, git_log)
 server.add_tool("git_diff", "Get git diff",
-    {"type": "object", "properties": {"repo_path": {"type": "string"}}, "required": ["repo_path"]}, git_diff)
+    {"type": "object", "properties": {"repo_path": {"type": "string"}}}, git_diff)
 
 if __name__ == "__main__":
     server.run()
