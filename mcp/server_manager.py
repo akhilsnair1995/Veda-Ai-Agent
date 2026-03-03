@@ -114,6 +114,22 @@ class MCPServerManager:
                     "enabled": True,
                     "description": "Chart and graph generation"
                 },
+                "system_apps": {
+                    "command": [
+                        python_exec,
+                        str(BASE_DIR / "mcp/servers/system_apps_server.py")
+                    ],
+                    "enabled": True,
+                    "description": "Control Windows applications"
+                },
+                "google_apps": {
+                    "command": [
+                        python_exec,
+                        str(BASE_DIR / "mcp/servers/google_apps_server.py")
+                    ],
+                    "enabled": True,
+                    "description": "Google Workspace integration"
+                },
                 "simulation": {
                     "command": [
                         python_exec,
@@ -237,18 +253,10 @@ class MCPServerManager:
             if "server" in params:
                 params = {k: v for k, v in params.items() if k != "server"}
 
-            # Alias common variations to 'path'
-            path_aliases = ["file_path", "image_path", "file", "target_path", "filepath", "dir_path"]
-            if "path" not in params:
-                for alias in path_aliases:
-                    if alias in params:
-                        params["path"] = params.pop(alias)
-                        break
-
             # Alias for 'run_python' code
             if clean_name == "run_python" and "code" not in params:
                 if "python_code" in params:
-                    params["code"] = params.pop("python_code")
+                    params["code"] = params.get("python_code")
 
         try:
             return client.call_tool(clean_name, params)

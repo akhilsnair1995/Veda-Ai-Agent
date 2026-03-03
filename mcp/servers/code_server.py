@@ -12,7 +12,7 @@ from mcp.server_base import MCPServer
 
 server = MCPServer(name="code", version="1.0.0")
 
-def run_python(code: str = None, timeout: int = 30, python_code: str = None, file_path: str = None, path: str = None) -> str:
+def run_python(code: str = None, timeout: int = 30, python_code: str = None, file_path: str = None, path: str = None, **kwargs) -> str:
     """Execute python code. Can take raw code or a path to a .py file."""
     code = code or python_code
     target_path = file_path or path
@@ -23,10 +23,7 @@ def run_python(code: str = None, timeout: int = 30, python_code: str = None, fil
             # Check relative to workspace if not absolute
             p = Path(target_path).expanduser()
             if not p.is_absolute():
-                # We assume the caller might be relative to the workspace defined in brain
-                # But for the server, we check locally first
                 if not p.exists():
-                    # Fallback to workspace directory if we can find it
                     workspace = Path("C:/Users/akhil/veda_agent/workspace")
                     p = workspace / p
             
@@ -40,14 +37,14 @@ def run_python(code: str = None, timeout: int = 30, python_code: str = None, fil
     if not code:
         return "Error: No code or file_path provided."
 
-    # Automatic Plotting Fix: Replace plt.show() with a savefig if no savefig is found
+    # Automatic Plotting Fix
     if "plt.show()" in code:
         if "plt.savefig" not in code:
             code = code.replace("plt.show()", "plt.savefig('auto_generated_plot.png')")
         else:
             code = code.replace("plt.show()", "# plt.show() removed for headless execution")
 
-    # Sandboxed execution using a temporary file
+    # Sandboxed execution
     fd, temp_path = tempfile.mkstemp(suffix='.py')
     try:
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
@@ -68,7 +65,7 @@ def run_python(code: str = None, timeout: int = 30, python_code: str = None, fil
         if os.path.exists(temp_path):
             os.unlink(temp_path)
 
-def run_shell(command: str, timeout: int = 10, confirm: bool = True) -> str:
+def run_shell(command: str, timeout: int = 10, confirm: bool = True, **kwargs) -> str:
     if not confirm:
         return "Command cancelled by user (confirm=False)."
     
@@ -79,9 +76,12 @@ def run_shell(command: str, timeout: int = 10, confirm: bool = True) -> str:
             return "Command blocked by security policy."
 
     try:
+        # Use PowerShell on Windows for better compatibility
+        shell_cmd = ["powershell.exe", "-NoProfile", "-Command", command] if os.name == 'nt' else command
+        
         result = subprocess.run(
-            command,
-            shell=True,
+            shell_cmd,
+            shell=(os.name != 'nt'),
             capture_output=True,
             text=True,
             timeout=timeout
@@ -92,40 +92,51 @@ def run_shell(command: str, timeout: int = 10, confirm: bool = True) -> str:
     except Exception as e:
         return f"Shell error: {e}"
 
-def lint_python(filepath: str) -> str:
+def lint_python(filepath: str = None, path: str = None, file_path: str = None, **kwargs) -> str:
+    target = filepath or path or file_path
+    if not target:
+        return "Error: No filepath provided."
     try:
-        # Check if flake8 is installed
-        result = subprocess.run(["flake8", filepath], capture_output=True, text=True)
+        result = subprocess.run(["flake8", target], capture_output=True, text=True)
         if result.returncode == 0:
             return "No linting errors found."
         return result.stdout
     except Exception:
-        # Fallback to simple py_compile
         try:
             import py_compile
-            py_compile.compile(filepath, doraise=True)
+            py_compile.compile(target, doraise=True)
             return "Syntax OK."
         except py_compile.PyCompileError as e:
             return f"Syntax Error: {e}"
 
-def format_python(filepath: str) -> str:
+def format_python(filepath: str = None, path: str = None, file_path: str = None, **kwargs) -> str:
+    target = filepath or path or file_path
+    if not target:
+        return "Error: No filepath provided."
     try:
-        result = subprocess.run(["black", filepath], capture_output=True, text=True)
-        return f"Formatter output:\n{result.stderr}" # black logs to stderr
+        result = subprocess.run(["black", target], capture_output=True, text=True)
+        return f"Formatter output:\n{result.stderr}"
     except Exception as e:
         return f"Format error (ensure black is installed): {e}"
 
-def analyze_file(filepath: str) -> str:
+def analyze_file(filepath: str = None, path: str = None, file_path: str = None, **kwargs) -> str:
+    target = filepath or path or file_path
+    if not target:
+        return "Error: No filepath provided."
+    
+    if os.path.isdir(target):
+        return f"Target '{target}' is a directory. Use 'list_directory' or a shell command to see its contents."
+
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            tree = ast.parse(f.read(), filename=filepath)
+        with open(target, 'r', encoding='utf-8') as f:
+            tree = ast.parse(f.read(), filename=target)
         
         functions = [node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
         classes = [node.name for node in ast.walk(tree) if isinstance(node, ast.ClassDef)]
         imports = [node.names[0].name for node in ast.walk(tree) if isinstance(node, ast.Import)]
         from_imports = [f"{node.module} ({node.names[0].name})" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
         
-        return f"File: {filepath}\nClasses: {', '.join(classes)}\nFunctions: {', '.join(functions)}\nImports: {', '.join(imports + from_imports)}"
+        return f"File: {target}\nClasses: {', '.join(classes)}\nFunctions: {', '.join(functions)}\nImports: {', '.join(imports + from_imports)}"
     except Exception as e:
         return f"Analysis error: {e}"
 

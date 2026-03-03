@@ -100,6 +100,7 @@ class VedaUI:
         help_table.add_row("/search <query>", "Deep Compliance Search in Notes")
         help_table.add_row("/skills", "List and Manage Veda's Expert Skills")
         help_table.add_row("/mcp", "Check Status of MCP Server Integration")
+        help_table.add_row("/attach <path>", "Attach an image or document for analysis")
         help_table.add_row("/reload", "Reconnect to Ollama (refreshes host URL)")
         help_table.add_row("/evolve", "Run proactive gap analysis and auto-generate skills")
         help_table.add_row("/clear", "Refresh Terminal Display")
@@ -111,6 +112,34 @@ class VedaUI:
     def handle_command(self, user_input: str) -> bool:
         cmd_parts = user_input.strip().split(" ", 1)
         cmd = cmd_parts[0].lower()
+
+        if cmd == "/attach":
+            if len(cmd_parts) < 2:
+                self.console.print("[red]Error: Please provide a file path.[/red]")
+                return True
+            path = cmd_parts[1].strip().replace('"', '').replace("'", "")
+            p = Path(path)
+            if not p.exists():
+                self.console.print(f"[red]Error: File not found at {path}[/red]")
+                return True
+            
+            ext = p.suffix.lower()
+            if ext in ['.png', '.jpg', '.jpeg', '.webp']:
+                self.console.print(f"[bold green]✓ Image attached:[/bold green] {p.name}")
+                if not hasattr(self, 'pending_attachments'):
+                    self.pending_attachments = []
+                self.pending_attachments.append(str(p.absolute()))
+            elif ext == '.pdf':
+                self.console.print(f"[bold green]✓ PDF recognized.[/bold green] I will analyze {p.name} using my document tools.")
+                # For PDFs, we don't necessarily "attach" to Ollama, but we might suggest a tool
+                save_message("user", f"Analyze this PDF: {p.absolute()}", self.session_id)
+                # Trigger a think cycle immediately with the PDF path
+                full_response = self.stream_response(f"I have a PDF at {p.absolute()}. Please read it and summarize it.")
+                self.run_tool_cycle(full_response, f"Analyze PDF: {p.absolute()}")
+            else:
+                self.console.print(f"[bold yellow]✓ File recognized:[/bold yellow] {p.name}. I'll read it if needed.")
+                save_message("user", f"Context file: {p.absolute()}", self.session_id)
+            return True
 
         if cmd == "/evolve":
             self.console.print("[dim]Launching Proactive Evolution Engine...[/dim]")
@@ -284,9 +313,14 @@ class VedaUI:
         self.console.print(f"\n[bold cyan]Veda[/bold cyan] [dim]>[/dim] ", end="")
         full_response = ""
         
+        images = None
+        if hasattr(self, 'pending_attachments') and self.pending_attachments:
+            images = self.pending_attachments
+            self.pending_attachments = [] # Clear after use
+
         # 1. Show Thinking Spinner while waiting for first token
         with self.console.status("[bold cyan]Thinking...", spinner="arc"):
-            stream = self.brain.stream_think(prompt)
+            stream = self.brain.stream_think(prompt, images=images)
             try:
                 # Get the first token to stop the spinner
                 first_token = next(stream)
@@ -304,24 +338,56 @@ class VedaUI:
         return full_response
 
     def run_tool_cycle(self, full_response: str, user_input: str):
-        """Execute tools and handle re-interpretation with status indicators."""
-        if "TOOL:" in full_response:
-            # Use the brain's built-in tool handler to execute and interpret
-            final_response = self.brain._handle_tool_calls(full_response, user_input)
+        """Continuous loop: Execute tools and feed results back to the brain until DONE."""
+        current_response = full_response
+        iterations = 0
+        max_iterations = 10
+        
+        while "TOOL:" in current_response:
+            if iterations >= max_iterations:
+                self.console.print("[bold red]Veda reached maximum autonomous steps (10) and paused for safety.[/bold red]")
+                break
+                
+            iterations += 1
             
-            self.console.print(Panel(
-                final_response,
-                title="[bold green]Final Observation[/bold green]",
-                border_style="green",
-                padding=(1, 2)
-            ))
+            # 1. Execute the tool
+            observation = self.brain._handle_tool_calls(current_response)
             
-            save_message("assistant", final_response, self.session_id)
-            self.semantic_memory.store(f"Fact: {final_response[:1000]}", metadata={"source": "tool_result"})
-        else:
-            save_message("assistant", full_response, self.session_id)
-            if len(full_response) > 50:
-                self.semantic_memory.store(f"Memory: {full_response[:1000]}", metadata={"source": "conversation"})
+            # 2. Feed observation back to the brain for the next step
+            self.console.print(f"[dim cyan]Thinking about the result (Step {iterations})...[/dim cyan]")
+            
+            # Record context for the next 'think'
+            messages = get_recent_messages(limit=20)
+            messages.append({"role": "user", "content": f"Observation: {observation}"})
+            
+            # Get next response
+            current_response = self.stream_response_internal(messages)
+            
+            if current_response.strip().startswith("DONE:"):
+                save_message("assistant", current_response, self.session_id)
+                break
+        
+        # Final save if not already saved
+        if not current_response.strip().startswith("DONE:") and iterations < max_iterations:
+            save_message("assistant", current_response, self.session_id)
+
+    def stream_response_internal(self, messages: list):
+        """Internal helper for streaming without the extra 'Veda >' prompt."""
+        full_response = ""
+        with self.console.status("[bold cyan]Thinking...", spinner="arc"):
+            stream = self.brain.stream_think("", history=messages)
+            try:
+                first_token = next(stream)
+                full_response += first_token
+            except StopIteration:
+                return ""
+
+        with Live(Text(full_response), console=self.console, refresh_per_second=20, transient=False) as live:
+            for token in stream:
+                full_response += token
+                live.update(Text(full_response))
+        self.console.print("\n")
+        return full_response
 
 
 @click.command()

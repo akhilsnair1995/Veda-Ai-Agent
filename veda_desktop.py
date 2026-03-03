@@ -185,7 +185,24 @@ else:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
 
+        # --- MULTIMODAL UPLOADER ---
+        uploaded_file = st.file_uploader("Attach Image or PDF", type=["png", "jpg", "jpeg", "webp", "pdf"], label_visibility="collapsed")
+        
         if prompt := st.chat_input("Command Veda..."):
+            images = None
+            if uploaded_file:
+                # Save uploaded file to workspace
+                file_path = os.path.join(st.session_state.workspace_path, uploaded_file.name)
+                with open(file_path, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                
+                if uploaded_file.type.startswith("image/"):
+                    images = [file_path]
+                    st.info(f"Image attached: {uploaded_file.name}")
+                elif uploaded_file.type == "application/pdf":
+                    prompt = f"Analyze this PDF: {file_path}. {prompt}"
+                    st.info(f"PDF recognized: {uploaded_file.name}")
+
             with chat_container:
                 with st.chat_message("user"):
                     st.markdown(prompt)
@@ -206,9 +223,12 @@ else:
                         
                         # Step 1: Brain Thinking
                         with st.status(f"Veda Turn {current_turn}...", expanded=False) as status:
-                            for chunk in st.session_state.brain.stream_think(prompt, history=messages):
+                            for chunk in st.session_state.brain.stream_think(prompt, history=messages, images=images):
                                 full_response += chunk
                                 response_placeholder.markdown(full_response + "▌")
+                            
+                            # Images are only sent on the first turn of the prompt
+                            images = None 
                             
                             # Step 2: Tool Check
                             # If stream cut off, it might be a tool call. Let's get the full response.
