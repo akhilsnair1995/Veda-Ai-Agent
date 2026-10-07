@@ -582,14 +582,15 @@ else:
                         
                         # Step 1: Brain Reasoning & Streaming
                         with st.status(f"⚡ Veda Reasoning (Turn {current_turn})...", expanded=False) as status:
-                            for chunk in st.session_state.brain.stream_think(prompt, history=messages, images=images):
+                            # On Turn 1, provide prompt/images; on subsequent turns, history already has context
+                            turn_prompt = prompt if current_turn == 1 else ""
+                            turn_images = images if current_turn == 1 else None
+                            for chunk in st.session_state.brain.stream_think(turn_prompt, history=messages, images=turn_images):
                                 full_response += chunk
                                 response_placeholder.markdown(full_response + "▌")
                             
-                            images = None 
-                            
                             if not full_response:
-                                full_response = st.session_state.brain.think(prompt, history=messages)
+                                full_response = st.session_state.brain.think(turn_prompt, history=messages, images=turn_images)
                             
                             response_placeholder.markdown(full_response)
 
@@ -617,7 +618,9 @@ else:
                                         "title": "Python Implementation"
                                     }
                                 
-                                img_match = re.search(r'([A-Za-z0-9_/\\]+\.(?:png|jpg))', full_response)
+                                # Check for image in response or tool observation
+                                combined_text = full_response + "\n" + str(result)
+                                img_match = re.search(r'([A-Za-z0-9_/\\]+\.(?:png|jpg|jpeg))', combined_text)
                                 if img_match:
                                     img_p = img_match.group(1)
                                     actual_p = img_p if os.path.isabs(img_p) else os.path.join(st.session_state.workspace_path, img_p)
@@ -625,7 +628,7 @@ else:
                                         st.session_state.artifact = {
                                             "type": "image", 
                                             "content": actual_p, 
-                                            "title": f"Rendered Visual: {img_p}"
+                                            "title": f"Rendered Visual: {os.path.basename(img_p)}"
                                         }
                                 
                                 continue
