@@ -185,6 +185,7 @@ class VedaBrain:
             return ""
 
         categories = {
+            "cad": "📐 CAD & BIM DRAFTING (DXF/DRAWINGS)",
             "simulation": "🧮 ENGINEERING SIMULATION & PHYSICS",
             "document": "📑 DOCUMENT INTELLIGENCE & DELIVERABLES",
             "code": "💻 CODE EXECUTION & SYSTEM AUDIT",
@@ -299,10 +300,10 @@ class VedaBrain:
                     )
                     system_content += memory_block
 
-            # Inject active skill context if a skill matches
+            # Inject active skill context if any skills match
             if user_message:
-                skill = self.skill_registry.detect_skill(user_message, {})
-                if skill:
+                matching_skills = self.skill_registry.detect_all_skills(user_message, {})
+                for skill in matching_skills:
                     system_content += f"\n\nACTIVE EXPERTISE ({skill.metadata.name}):\n{skill.get_context()}"
 
             messages.insert(0, {"role": "system", "content": system_content})

@@ -91,13 +91,24 @@ class SkillRegistry:
         Check every loaded skill to see if it should handle 
         this message. Returns the first matching skill, or None.
         """
+        matches = self.detect_all_skills(user_message, context)
+        return matches[0] if matches else None
+
+    def detect_all_skills(self,
+                          user_message: str,
+                          context: dict) -> list[BaseSkill]:
+        """
+        Check every loaded skill and return all matching skills.
+        Allows multi-disciplinary reasoning across engineering codes, design, and research.
+        """
+        matched = []
         for skill in self.skills.values():
             try:
                 if skill.should_activate(user_message, context):
-                    return skill
+                    matched.append(skill)
             except Exception:
                 pass
-        return None
+        return matched
 
     def execute_skill(self, 
                       skill: BaseSkill,
