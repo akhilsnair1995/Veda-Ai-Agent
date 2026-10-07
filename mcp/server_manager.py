@@ -17,7 +17,14 @@ if str(BASE_DIR) not in sys.path:
 
 from mcp.client import MCPClient
 
-console = Console()
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+console = Console(highlight=False, legacy_windows=False)
 CONFIG_FILE = BASE_DIR / "config" / "mcp_servers.yaml"
 
 

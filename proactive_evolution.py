@@ -15,8 +15,7 @@ from memory.history import get_recent_messages
 console = Console()
 
 def run_evolution():
-    console.print(Panel.fit("[bold magenta]Veda Proactive Evolution Engine[/bold magenta]
-[dim]Analyzing recent conversations to identify knowledge gaps and generate new skills...[/dim]"))
+    console.print(Panel.fit("[bold magenta]Veda Proactive Evolution Engine[/bold magenta]\n[dim]Analyzing recent conversations to identify knowledge gaps and generate new skills...[/dim]"))
     
     # 1. Fetch recent history
     recent = get_recent_messages(limit=50)
@@ -26,21 +25,17 @@ def run_evolution():
 
     # Extract just the user queries to find patterns
     user_queries = [msg['content'] for msg in recent if msg['role'] == 'user']
-    history_text = "
-".join(user_queries)
+    history_text = "\n".join(user_queries)
 
     # 2. Analyze for gaps using the LLM directly
-    brain = VedaBrain(model="qwen2.5:7b")
+    brain = VedaBrain()
     
     analysis_prompt = (
         "Analyze the following recent user queries. Identify ONE specific, recurring engineering or software topic "
         "that the user frequently asks about, which indicates a gap in my specialized skills. "
         "Respond ONLY with the name of the topic and a 1-sentence description of the required skill. "
-        "If there is no clear recurring pattern, respond with 'NO_GAP_FOUND'.
-
-"
-        "RECENT QUERIES:
-" + history_text
+        "If there is no clear recurring pattern, respond with 'NO_GAP_FOUND'.\n\n"
+        "RECENT QUERIES:\n" + history_text
     )
     
     console.print("[cyan]Analyzing conversation history for patterns...[/cyan]")
@@ -50,18 +45,13 @@ def run_evolution():
         console.print("[green]No significant skill gaps detected in recent history. Evolution paused.[/green]")
         return
         
-    console.print(f"
-[bold yellow]Identified Gap:[/bold yellow]
-{analysis_result}
-")
+    console.print(f"\n[bold yellow]Identified Gap:[/bold yellow]\n{analysis_result}\n")
     
     # 3. Trigger Self-Improvement
     console.print("[cyan]Initiating Autonomous Skill Generation...[/cyan]")
     evolution_prompt = (
         f"Based on the following identified knowledge gap, please use your self-evolution protocol "
-        f"to write a new Python skill file to handle this topic. 
-
-GAP: {analysis_result}"
+        f"to write a new Python skill file to handle this topic.\n\nGAP: {analysis_result}"
     )
     
     # We pass this to the brain, which should trigger the SelfImprovementSkill automatically 

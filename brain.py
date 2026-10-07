@@ -178,6 +178,67 @@ class VedaBrain:
         except Exception as e:
             return f"Error setting workspace: {e}"
 
+    def _format_tool_signatures(self) -> str:
+        """Format MCP tools into organized, high-precision function signatures with parameter types."""
+        prefixed_tools = {k: v for k, v in self.mcp_manager.all_tools.items() if "__" in k}
+        if not prefixed_tools:
+            return ""
+
+        categories = {
+            "simulation": "🧮 ENGINEERING SIMULATION & PHYSICS",
+            "document": "📑 DOCUMENT INTELLIGENCE & DELIVERABLES",
+            "code": "💻 CODE EXECUTION & SYSTEM AUDIT",
+            "filesystem": "📁 WORKSPACE FILESYSTEM OPERATIONS",
+            "web": "🌐 WEB SEARCH & TECHNICAL FETCH",
+            "visualization": "📊 DATA VISUALIZATION & CHARTS",
+            "memory": "🧠 MEMORY & KNOWLEDGE SYSTEM",
+            "notes": "📝 SCRATCHPAD & TECHNICAL NOTES"
+        }
+
+        output = ["\n\nAVAILABLE ENGINEERING & SYSTEM TOOLS:"]
+        
+        # Group tools by server prefix
+        by_server = {}
+        for full_name, t in prefixed_tools.items():
+            server_name = full_name.split("__")[0]
+            by_server.setdefault(server_name, []).append((full_name, t))
+
+        for s_name, header in categories.items():
+            if s_name in by_server:
+                output.append(f"\n{header}:")
+                for full_name, t in sorted(by_server[s_name], key=lambda x: x[0]):
+                    props = t.get("inputSchema", {}).get("properties", {})
+                    req = t.get("inputSchema", {}).get("required", [])
+                    args = []
+                    for k, v in props.items():
+                        arg_type = v.get("type", "any")
+                        if arg_type == "integer": arg_type = "int"
+                        elif arg_type == "number": arg_type = "float"
+                        opt = "" if k in req else "?"
+                        args.append(f"{k}{opt}: {arg_type}")
+                    sig_args = ", ".join(args)
+                    desc = t.get("description", "").rstrip(".")
+                    output.append(f"- {full_name}({sig_args}): {desc}")
+
+        for s_name, tools_list in by_server.items():
+            if s_name not in categories:
+                output.append(f"\n{s_name.upper()} TOOLS:")
+                for full_name, t in tools_list:
+                    props = t.get("inputSchema", {}).get("properties", {})
+                    req = t.get("inputSchema", {}).get("required", [])
+                    args = [f"{k}{'' if k in req else '?'}: {v.get('type', 'any')}" for k, v in props.items()]
+                    output.append(f"- {full_name}({', '.join(args)}): {t.get('description', '')}")
+
+        return "\n".join(output)
+
+    def remember(self, text: str, metadata: dict = None) -> bool:
+        """Store permanent knowledge in semantic memory."""
+        try:
+            self.semantic_memory.store(text, metadata=metadata or {"source": "veda_learned"})
+            return True
+        except Exception:
+            return False
+
     def think(self, user_message: str, history: list = None, images: list = None) -> str:
         """Non-streaming inference. Used for internal agentic loop steps."""
         messages = self._build_messages(user_message, history, images)
@@ -194,7 +255,7 @@ class VedaBrain:
     def _build_messages(self, user_message: str, history: list = None, images: list = None):
         """
         Build the message array for the LLM.
-        Includes: system prompt + tool schemas + semantic memory + conversation history.
+        Includes: system prompt + tool signatures + semantic memory + conversation history.
         """
         if history:
             messages = list(history)
@@ -205,7 +266,6 @@ class VedaBrain:
         # Build user message (with optional images for multimodal)
         if user_message or images:
             if images:
-                # Multimodal message with vision
                 content = []
                 if user_message:
                     content.append({"type": "text", "text": user_message})
@@ -225,13 +285,10 @@ class VedaBrain:
             system_content = self.system_prompt
             system_content += f"\n\nCURRENT WORKING DIRECTORY: '{self.workspace_path}'\nAll relative file operations, script generation, and code executions MUST take place in or relative to this directory."
 
-            # Inject available tool schemas
-            schemas = self.mcp_manager.get_all_tool_schemas()
-            if schemas:
-                tools_desc = "\n\nAVAILABLE TOOLS:\n" + "\n".join(
-                    [f"- {s['name']}: {s.get('description', '')}" for s in schemas]
-                )
-                system_content += tools_desc
+            # Inject structured tool signatures
+            tool_signatures = self._format_tool_signatures()
+            if tool_signatures:
+                system_content += tool_signatures
 
             # Inject relevant semantic memory
             if user_message:
@@ -259,7 +316,6 @@ class VedaBrain:
             if not path.exists():
                 return ""
             
-            # Determine MIME type
             ext = path.suffix.lower()
             mime_map = {
                 '.png': 'image/png',
@@ -284,37 +340,42 @@ class VedaBrain:
 
         tool_name = tool_match.group(1).strip()
         params = {}
-
-        # Extract and repair JSON params
         json_str = ""
+
         try:
-            start_idx = response.find('{', tool_match.end())
+            after_tool = response[tool_match.end():]
+            start_idx = after_tool.find('{')
             if start_idx != -1:
-                end_idx = response.rfind('}')
+                end_idx = after_tool.rfind('}')
                 if end_idx > start_idx:
-                    json_str = response[start_idx:end_idx + 1]
+                    json_str = after_tool[start_idx:end_idx + 1]
                 else:
-                    json_str = response[start_idx:]
+                    json_str = after_tool[start_idx:] + '}'
 
-                # Repair unterminated strings
-                if json_str.count('"') % 2 != 0:
-                    json_str += '"'
-                if not json_str.endswith('}'):
-                    json_str += '}'
+                clean_json = re.sub(r'```[a-z]*\n?', '', json_str).strip()
+                clean_json = clean_json.strip('`').strip()
+                
+                try:
+                    params = json.loads(clean_json)
+                except json.JSONDecodeError:
+                    clean_json = re.sub(r',\s*([}\]])', r'\1', clean_json)
+                    params = json.loads(clean_json)
+        except Exception:
+            # Fallback parameter extractors
+            if "run_python" in tool_name or "code" in tool_name:
+                code_match = re.search(r'```(?:python)?\n(.*?)\n```', response, re.DOTALL)
+                if code_match:
+                    params = {"code": code_match.group(1)}
+            
+            if not params:
+                query_match = re.search(r'"query"\s*:\s*"([^"]+)"', response)
+                if query_match:
+                    params = {"query": query_match.group(1)}
 
-                # Strip markdown fences
-                json_str = re.sub(r'```[a-z]*\n?', '', json_str).strip()
-                params = json.loads(json_str)
-        except json.JSONDecodeError:
-            # Fallback: try to extract a "command" key
-            cmd_match = re.search(r'"command"\s*:\s*"([^"]+)"?', json_str)
-            if cmd_match:
-                params = {"command": cmd_match.group(1)}
-
-        if not params and tool_name != "notes":
+        if not params and tool_name not in ["notes", "notes__list_notes", "notes__view_all_notes"]:
             error_msg = (
-                f"Error: Tool '{tool_name}' received malformed params: {json_str}. "
-                f"Reformat and try again."
+                f"Error: Tool '{tool_name}' received unparseable parameters. "
+                f"Ensure parameters are valid JSON matching schema: PARAMS: {{\"arg\": \"value\"}}"
             )
             console.print(f"[bold red]{error_msg}[/bold red]")
             return error_msg
@@ -326,7 +387,7 @@ class VedaBrain:
             return f"{result}\nCRITICAL: STOP this strategy immediately."
 
         console.print(Panel(
-            str(result)[:2000],  # Truncate very long outputs for display
+            str(result)[:2000],
             title=f"[bold cyan]{tool_name} output[/bold cyan]",
             border_style="cyan"
         ))
