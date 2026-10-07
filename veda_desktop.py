@@ -69,7 +69,7 @@ if "workspace_path" not in st.session_state:
 
 if "brain" not in st.session_state:
     with st.spinner("Initializing Veda Brain..."):
-        st.session_state.brain = VedaBrain(model="google/gemma-4-12b-qat", workspace=st.session_state.workspace_path)
+        st.session_state.brain = VedaBrain(workspace=st.session_state.workspace_path)
 
 if "artifact" not in st.session_state:
     st.session_state.artifact = {"type": None, "content": None, "title": "Cowork Space"}

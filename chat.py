@@ -166,8 +166,9 @@ class VedaUI:
         if cmd == "/reload":
             self.console.print("[dim]Refreshing LLM connection...[/dim]")
             host = self.brain._get_host()
+            api_key = self.brain._get_api_key()
             from openai import OpenAI
-            self.brain.client = OpenAI(base_url=host, api_key="lm-studio")
+            self.brain.client = OpenAI(base_url=host, api_key=api_key)
             self.console.print("[bold green]✓ Connection re-established.[/bold green]")
             return True
 

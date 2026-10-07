@@ -12,6 +12,9 @@ import json
 import os
 import base64
 
+from dotenv import load_dotenv
+load_dotenv()
+
 BASE_DIR = Path(__file__).resolve().parent
 
 # Ensure the project root is in sys.path
@@ -66,8 +69,8 @@ STYLE:
 WORKSPACE_FILE = BASE_DIR / "config" / "current_workspace.txt"
 
 class VedaBrain:
-    def __init__(self, model: str = "google/gemma-4-12b-qat", workspace: str = None):
-        self.model = model
+    def __init__(self, model: str = None, workspace: str = None):
+        self.model = model or self._get_default_model()
         self.system_prompt = VEDA_SYSTEM_PROMPT
         self.semantic_memory = SemanticMemory()
         self.skill_registry = SkillRegistry()
@@ -79,7 +82,8 @@ class VedaBrain:
 
         # Connect to LLM backend
         host = self._get_host()
-        self.client = OpenAI(base_url=host, api_key="lm-studio")
+        api_key = self._get_api_key()
+        self.client = OpenAI(base_url=host, api_key=api_key)
         
         # Start MCP servers
         self.mcp_manager.start_all()
@@ -91,16 +95,44 @@ class VedaBrain:
         if self._health_check():
             console.print(f"[bold green]✓ Veda Online — Model: {self.model}[/bold green]")
         else:
-            error = f"Could not connect to LLM at {host}. Is LM Studio running with a model loaded?"
+            error = f"Could not connect to LLM at {host}. Please verify your API key, endpoint, or local model server."
             self.init_errors.append(error)
             console.print(f"[bold red]✗ {error}[/bold red]")
 
+    def _get_api_key(self) -> str:
+        """Resolve the API key for LLM endpoint."""
+        try:
+            import streamlit as st
+            if "OPENAI_API_KEY" in st.secrets:
+                return str(st.secrets["OPENAI_API_KEY"]).strip()
+            if "GEMINI_API_KEY" in st.secrets:
+                return str(st.secrets["GEMINI_API_KEY"]).strip()
+        except Exception:
+            pass
+        return os.getenv("OPENAI_API_KEY") or os.getenv("GEMINI_API_KEY") or "lm-studio"
+
+    def _get_default_model(self) -> str:
+        """Resolve default model name."""
+        try:
+            import streamlit as st
+            if "DEFAULT_MODEL" in st.secrets:
+                return str(st.secrets["DEFAULT_MODEL"]).strip()
+        except Exception:
+            pass
+        return os.getenv("DEFAULT_MODEL", "gemini-3.1-flash-lite")
+
     def _get_host(self) -> str:
         """Resolve the LLM backend URL."""
+        try:
+            import streamlit as st
+            if "OPENAI_BASE_URL" in st.secrets:
+                return str(st.secrets["OPENAI_BASE_URL"]).strip()
+        except Exception:
+            pass
         if OPENAI_HOST_FILE.exists():
             url = OPENAI_HOST_FILE.read_text().strip()
             # Ensure it ends with /v1 for OpenAI compat
-            if not url.endswith("/v1"):
+            if not url.endswith("/v1") and not url.endswith("/openai/"):
                 url = url.rstrip("/") + "/v1"
             return url
         return os.getenv("OPENAI_BASE_URL", "http://localhost:1234/v1")
