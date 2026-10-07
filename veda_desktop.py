@@ -5,8 +5,13 @@ import time
 import uuid
 import re
 import sys
-import tkinter as tk
-from tkinter import filedialog
+try:
+    import tkinter as tk
+    from tkinter import filedialog
+except (ImportError, ModuleNotFoundError):
+    tk = None
+    filedialog = None
+
 from pathlib import Path
 from datetime import datetime
 from PIL import Image
@@ -31,6 +36,8 @@ from memory.semantic import SemanticMemory
 
 def select_folder():
     """Trigger a native OS folder selection dialog."""
+    if not tk or not filedialog:
+        return None
     try:
         root = tk.Tk()
         root.withdraw()
@@ -38,7 +45,7 @@ def select_folder():
         path = filedialog.askdirectory(master=root)
         root.destroy()
         return path
-    except:
+    except Exception:
         return None
 
 # Page Configuration
@@ -62,7 +69,7 @@ if "workspace_path" not in st.session_state:
 
 if "brain" not in st.session_state:
     with st.spinner("Initializing Veda Brain..."):
-        st.session_state.brain = VedaBrain(model="qwen2.5:7b")
+        st.session_state.brain = VedaBrain(model="google/gemma-4-12b-qat", workspace=st.session_state.workspace_path)
 
 if "artifact" not in st.session_state:
     st.session_state.artifact = {"type": None, "content": None, "title": "Cowork Space"}
@@ -118,20 +125,13 @@ with st.sidebar:
     
     # 3. Model Configuration
     st.subheader("Engine Settings")
-    try:
-        models_resp = st.session_state.brain.client.list()
-        models = models_resp.get('models', []) if isinstance(models_resp, dict) else models_resp.models
-        names = [m.get('name') if isinstance(m, dict) else m.model for m in models]
-        try:
-            current_model_idx = names.index(st.session_state.brain.model)
-        except ValueError:
-            current_model_idx = 0
-        new_model = st.selectbox("Active Brain:", names, index=current_model_idx)
-        if new_model != st.session_state.brain.model:
-            st.session_state.brain.model = new_model
-            st.success(f"Switched to {new_model}")
-    except:
-        st.caption("Ollama offline.")
+    current_model = st.text_input("Active Model:", value=st.session_state.brain.model)
+    if current_model != st.session_state.brain.model:
+        st.session_state.brain.model = current_model
+        st.success(f"Switched to {current_model}")
+    
+    host_url = st.session_state.brain._get_host()
+    st.caption(f"Endpoint: `{host_url}`")
 
 # --- MAIN CONTENT AREA ---
 
@@ -157,14 +157,8 @@ if st.session_state.current_session_id == "NEW" or st.session_state.current_sess
             st.rerun()
 
 else:
-    # Synchronize Brain Workspace
-    marker = "AUTHORIZED WORKSPACE: Your primary working directory is '"
-    lines = st.session_state.brain.system_prompt.split('\n')
-    for i, line in enumerate(lines):
-        if marker in line:
-            lines[i] = f"- AUTHORIZED WORKSPACE: Your primary working directory is '{st.session_state.workspace_path}'. Use this folder for all project files, scripts, and reports."
-            break
-    st.session_state.brain.system_prompt = '\n'.join(lines)
+    # Synchronize Brain Workspace with active session
+    st.session_state.brain.set_workspace(st.session_state.workspace_path)
 
     show_artifact = st.session_state.artifact.get("content") is not None
     if show_artifact:
@@ -231,17 +225,15 @@ else:
                             images = None 
                             
                             # Step 2: Tool Check
-                            # If stream cut off, it might be a tool call. Let's get the full response.
-                            if not full_response or "TOOL:" not in full_response:
-                                # Sometimes stream_think returns before TOOL if the stop logic triggers
-                                # We need to check the 'complete' response from the brain
+                            if not full_response:
                                 full_response = st.session_state.brain.think(prompt, history=messages)
                                 response_placeholder.markdown(full_response)
 
                             if "TOOL:" in full_response:
                                 status.update(label="Executing Tool...", state="running", expanded=True)
                                 result = st.session_state.brain.call_tool_sync(full_response)
-                                observation = f"Observation (Step {current_turn}):\n{result}"
+                                obs_text = result[:4000] if len(str(result)) > 4000 else str(result)
+                                observation = f"[Tool Observation (Step {current_turn})]:\n{obs_text}"
                                 status.update(label=f"Observation Received", state="complete")
                                 
                                 # Record turn in history

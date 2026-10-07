@@ -5,6 +5,11 @@ __pycache__/
 *.pyc
 .env
 
+# Generated configs (machine-specific paths, regenerated on first run)
+config/mcp_servers.yaml
+config/colab_url.txt
+config/current_workspace.txt
+
 # Databases & Vectorstores (Veda's Personal Memory)
 # We ignore these so users don't overwrite each other's memories
 memory/*.db

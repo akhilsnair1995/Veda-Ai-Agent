@@ -10,6 +10,13 @@ from typing import Optional
 from rich.console import Console
 from skills.base_skill import BaseSkill, SkillResult
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 console = Console()
 BASE_DIR = Path(__file__).resolve().parent.parent
 SKILLS_DIR = BASE_DIR / "skills"

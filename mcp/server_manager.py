@@ -44,10 +44,26 @@ class MCPServerManager:
     def load_config(self) -> dict:
         """
         Load server configuration from YAML file.
-        Creates a default config if none exists.
+        Creates a default config if none exists or if paths are stale.
         """
         if not CONFIG_FILE.exists():
             self._create_default_config()
+        else:
+            try:
+                data = yaml.safe_load(CONFIG_FILE.read_text())
+                servers = data.get("servers", {}) if isinstance(data, dict) else {}
+                stale = False
+                for s_cfg in servers.values():
+                    cmd = s_cfg.get("command", [])
+                    if cmd and isinstance(cmd, list) and len(cmd) >= 2:
+                        if not Path(cmd[0]).exists() or not Path(cmd[1]).exists():
+                            stale = True
+                            break
+                if stale:
+                    console.print("[dim yellow]Detected stale paths in MCP config. Regenerating dynamically...[/dim yellow]")
+                    self._create_default_config()
+            except Exception:
+                self._create_default_config()
         return yaml.safe_load(CONFIG_FILE.read_text())
 
     def _create_default_config(self):

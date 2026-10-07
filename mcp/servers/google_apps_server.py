@@ -22,23 +22,19 @@ def gmail_list_recent(max_results: int = 10) -> str:
     """List recent email subjects and snippets."""
     if not check_auth():
         return "Error: Google credentials not found. Run authentication setup first."
-    return "[MOCK] Gmail: 1. Project Update - Subject: HVAC load calculations ready
-2. Meeting Invite - Subject: Weekly Sync"
+    return "[MOCK] Gmail: 1. Project Update - Subject: HVAC load calculations ready\n2. Meeting Invite - Subject: Weekly Sync"
 
 def drive_search(query: str) -> str:
     """Search for files in Google Drive."""
     if not check_auth():
         return "Error: Google credentials not found."
-    return f"[MOCK] Google Drive search for '{query}':
-1. {query}_V1.pdf
-2. {query}_Notes.docx"
+    return f"[MOCK] Google Drive search for '{query}':\n1. {query}_V1.pdf\n2. {query}_Notes.docx"
 
 def calendar_list_events() -> str:
     """List upcoming calendar events."""
     if not check_auth():
         return "Error: Google credentials not found."
-    return "[MOCK] Calendar: 1. Design Review - 14:00 today
-2. Client Call - 10:00 tomorrow"
+    return "[MOCK] Calendar: 1. Design Review - 14:00 today\n2. Client Call - 10:00 tomorrow"
 
 def sheets_read_range(spreadsheet_id: str, range_name: str) -> str:
     """Read data from a Google Sheet."""

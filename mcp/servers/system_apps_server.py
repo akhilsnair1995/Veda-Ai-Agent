@@ -42,8 +42,7 @@ def list_running_processes() -> str:
     try:
         cmd = ["powershell.exe", "-NoProfile", "-Command", "Get-Process | Select-Object Name, Id, CPU | Sort-Object CPU -Descending | Select-Object -First 15 | ConvertTo-Json"]
         result = subprocess.run(cmd, capture_output=True, text=True)
-        return f"Top 15 CPU-intensive processes:
-{result.stdout}"
+        return f"Top 15 CPU-intensive processes:\n{result.stdout}"
     except Exception as e:
         return f"Error listing processes: {e}"
 
@@ -63,8 +62,7 @@ def get_system_info() -> str:
     try:
         cmd = ["powershell.exe", "-NoProfile", "-Command", "Get-ComputerInfo | Select-Object OsName, OsVersion, CsProcessors | ConvertTo-Json"]
         result = subprocess.run(cmd, capture_output=True, text=True)
-        return f"System Info:
-{result.stdout}"
+        return f"System Info:\n{result.stdout}"
     except Exception as e:
         return f"Error getting system info: {e}"
 

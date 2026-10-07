@@ -56,9 +56,9 @@ class VedaUI:
 
         # 2. Stats & Status Table
         notes_count = len(get_all_notes())
-        host_url = os.getenv("OLLAMA_HOST", "Localhost")
-        if "trycloudflare.com" in host_url:
-            host_display = "[green]REMOTE (KAG/COLAB)[/green]"
+        host_url = self.brain._get_host()
+        if "trycloudflare.com" in host_url or "localhost" not in host_url:
+            host_display = "[green]REMOTE[/green]"
         else:
             host_display = "[yellow]LOCAL[/yellow]"
 
@@ -66,6 +66,7 @@ class VedaUI:
         status_table.add_row("[bold magenta]CORE[/bold magenta]", "[white]UNIVERSAL-AGENT[/white]")
         status_table.add_row("[bold magenta]MODEL[/bold magenta]", f"{self.brain.model}")
         status_table.add_row("[bold magenta]SYNC[/bold magenta]", host_display)
+        status_table.add_row("[bold magenta]WORKSPACE[/bold magenta]", f"[dim]{self.brain.workspace_path}[/dim]")
         status_table.add_row("[bold magenta]DB[/bold magenta]", f"{notes_count} Notes | Vector Active")
 
         # Layout Assembly
@@ -95,13 +96,14 @@ class VedaUI:
         help_table.add_column("Command", style="yellow")
         help_table.add_column("Description", style="dim")
         
-        help_table.add_row("/model <name>", "Switch underlying Ollama model")
+        help_table.add_row("/workspace [path]", "View or switch active workspace directory")
+        help_table.add_row("/model <name>", "Switch the active LLM model")
         help_table.add_row("/notes", "Review Engineering Logic & Saved Notes")
         help_table.add_row("/search <query>", "Deep Compliance Search in Notes")
         help_table.add_row("/skills", "List and Manage Veda's Expert Skills")
         help_table.add_row("/mcp", "Check Status of MCP Server Integration")
         help_table.add_row("/attach <path>", "Attach an image or document for analysis")
-        help_table.add_row("/reload", "Reconnect to Ollama (refreshes host URL)")
+        help_table.add_row("/reload", "Reconnect to LLM backend (refreshes host URL)")
         help_table.add_row("/evolve", "Run proactive gap analysis and auto-generate skills")
         help_table.add_row("/clear", "Refresh Terminal Display")
         help_table.add_row("/help", "Show this help menu")
@@ -112,6 +114,16 @@ class VedaUI:
     def handle_command(self, user_input: str) -> bool:
         cmd_parts = user_input.strip().split(" ", 1)
         cmd = cmd_parts[0].lower()
+
+        if cmd == "/workspace":
+            if len(cmd_parts) > 1:
+                new_ws = cmd_parts[1].strip().strip('"').strip("'")
+                msg = self.brain.set_workspace(new_ws)
+                self.console.print(f"[bold green]✓ {msg}[/bold green]")
+            else:
+                self.console.print(f"[bold cyan]Current Workspace:[/bold cyan] {self.brain.workspace_path}")
+                self.console.print("[dim]Usage: /workspace <path> to switch working directory[/dim]")
+            return True
 
         if cmd == "/attach":
             if len(cmd_parts) < 2:
@@ -152,47 +164,22 @@ class VedaUI:
             return True
 
         if cmd == "/reload":
-            self.console.print("[dim]Refreshing connection to Ollama...[/dim]")
-            # Re-fetch host and recreate client
-            self.brain.client = ollama.Client(host=self.brain._get_host())
+            self.console.print("[dim]Refreshing LLM connection...[/dim]")
+            host = self.brain._get_host()
+            from openai import OpenAI
+            self.brain.client = OpenAI(base_url=host, api_key="lm-studio")
             self.console.print("[bold green]✓ Connection re-established.[/bold green]")
             return True
 
         if cmd == "/model":
-            try:
-                models_resp = self.brain.client.list()
-                # Handle different ollama-python library versions
-                models = models_resp.get('models', []) if isinstance(models_resp, dict) else models_resp.models
-                
-                if not models:
-                    self.console.print("[yellow]No models found in Ollama.[/yellow]")
-                    return True
-
-                table = Table(title="Available Ollama Models", show_header=True, header_style="bold magenta")
-                table.add_column("#", style="dim", width=4)
-                table.add_column("Model Name", style="yellow")
-                table.add_column("Size", style="green")
-
-                for i, m in enumerate(models, 1):
-                    # Handle different object types from ollama list
-                    name = m.get('name') if isinstance(m, dict) else m.model
-                    size_bytes = m.get('size') if isinstance(m, dict) else m.size
-                    size_gb = f"{size_bytes / (1024**3):.2f} GB"
-                    table.add_row(str(i), name, size_gb)
-
-                self.console.print(table)
-                choice = self.console.input("[bold cyan]Select model # (or press Enter to cancel): [/bold cyan]").strip()
-                
-                if choice.isdigit() and 1 <= int(choice) <= len(models):
-                    selected = models[int(choice)-1]
-                    new_model = selected.get('name') if isinstance(selected, dict) else selected.model
-                    self.console.print(f"[bold yellow]Switching to {new_model}...[/bold yellow]")
-                    self.brain.model = new_model
-                    self.console.print(f"[bold green]✓ Model active.[/bold green]")
-                return True
-            except Exception as e:
-                self.console.print(f"[red]Error listing models: {e}[/red]")
-                return True
+            if len(cmd_parts) > 1:
+                new_model = cmd_parts[1].strip()
+                self.brain.model = new_model
+                self.console.print(f"[bold green]✓ Model switched to: {new_model}[/bold green]")
+            else:
+                self.console.print(f"[bold cyan]Current model:[/bold cyan] {self.brain.model}")
+                self.console.print("[dim]Usage: /model <model-name>[/dim]")
+            return True
 
         elif cmd == "/notes":
             notes = get_all_notes()
@@ -356,9 +343,12 @@ class VedaUI:
             # 2. Feed observation back to the brain for the next step
             self.console.print(f"[dim cyan]Thinking about the result (Step {iterations})...[/dim cyan]")
             
-            # Record context for the next 'think'
+            # Record context: assistant's tool call + tool observation
             messages = get_recent_messages(limit=20)
-            messages.append({"role": "user", "content": f"Observation: {observation}"})
+            messages.append({"role": "assistant", "content": current_response})
+            # Truncate very large observations to avoid blowing the context window
+            obs_text = observation[:4000] if len(observation) > 4000 else observation
+            messages.append({"role": "user", "content": f"[Tool Observation]:\n{obs_text}"})
             
             # Get next response
             current_response = self.stream_response_internal(messages)
@@ -391,14 +381,15 @@ class VedaUI:
 
 
 @click.command()
-@click.option('--model', default='qwen2.5:7b', help='Ollama model to use')
-def main(model):
+@click.option('--model', default='google/gemma-4-12b-qat', help='LLM model to use')
+@click.option('--workspace', default=None, help='Target workspace directory for file operations')
+def main(model, workspace):
     init_database()
     console = Console()
     session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     
     # Initialize components
-    brain = VedaBrain(model=model)
+    brain = VedaBrain(model=model, workspace=workspace)
     ui = VedaUI(console, brain, session_id)
 
     # Clear screen before showing dashboard

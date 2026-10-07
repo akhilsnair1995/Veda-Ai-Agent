@@ -46,12 +46,12 @@ Provide your review in the following exact structure:
         ]
         
         try:
-            response = brain.client.chat(
+            response = brain.client.chat.completions.create(
                 model=brain.model,
                 messages=messages,
-                options={"temperature": 0.1}
+                temperature=0.1
             )
-            content = response["message"]["content"]
+            content = response.choices[0].message.content
             return SkillResult(success=True, output=content)
         except Exception as e:
             return SkillResult(success=False, output=f"Error executing Code Review: {e}", error=str(e))

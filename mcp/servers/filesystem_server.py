@@ -19,13 +19,47 @@ def _human_size(size: int) -> str:
         size /= 1024
     return f"{size:.1f} PB"
 
-WORKSPACE_DIR = BASE_DIR / "workspace"
+WORKSPACE_FILE = BASE_DIR / "config" / "current_workspace.txt"
+
+def _get_workspace() -> Path:
+    if WORKSPACE_FILE.exists():
+        try:
+            ws_path = WORKSPACE_FILE.read_text(encoding="utf-8").strip()
+            if ws_path:
+                p = Path(ws_path).expanduser().resolve()
+                if p.is_dir():
+                    return p
+        except Exception:
+            pass
+    env_ws = os.getenv("VEDA_WORKSPACE")
+    if env_ws:
+        p = Path(env_ws).expanduser().resolve()
+        if p.is_dir():
+            return p
+    default_ws = (BASE_DIR / "workspace").resolve()
+    default_ws.mkdir(parents=True, exist_ok=True)
+    return default_ws
+
+def set_workspace(path: str) -> str:
+    """Set the active workspace directory for file operations."""
+    try:
+        p = Path(path).expanduser().resolve()
+        p.mkdir(parents=True, exist_ok=True)
+        WORKSPACE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        WORKSPACE_FILE.write_text(str(p), encoding="utf-8")
+        return f"Active workspace set to: {p}"
+    except Exception as e:
+        return f"Error setting workspace: {e}"
+
+def get_current_workspace() -> str:
+    """Get the current active workspace directory path."""
+    return str(_get_workspace())
 
 def _resolve_and_verify(path: str) -> Path:
-    # Resolve relative paths against the dedicated workspace
+    # Resolve relative paths against the active workspace
     p = Path(path).expanduser()
     if not p.is_absolute():
-        p = (WORKSPACE_DIR / p).resolve()
+        p = (_get_workspace() / p).resolve()
     else:
         p = p.resolve()
     return p
@@ -221,6 +255,12 @@ server.add_tool("replace_text", "High-precision text replacement tool. Requires 
 
 server.add_tool("get_file_info", "Get file metadata",
     {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}, get_file_info)
+
+server.add_tool("set_workspace", "Change the active working directory for file operations",
+    {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}, set_workspace)
+
+server.add_tool("get_current_workspace", "Get the active workspace directory path",
+    {"type": "object", "properties": {}}, get_current_workspace)
 
 if __name__ == "__main__":
     server.run()

@@ -41,13 +41,13 @@ OUTPUT FORMAT:
                 {"role": "user", "content": prompt}
             ]
             
-            response = brain.client.chat(
+            response = brain.client.chat.completions.create(
                 model=brain.model,
                 messages=messages,
-                options={"temperature": 0.1}
+                temperature=0.1
             )
             
-            return SkillResult(success=True, output=response["message"]["content"])
+            return SkillResult(success=True, output=response.choices[0].message.content)
             
         except Exception as e:
             return SkillResult(success=False, output=f"Error researching building codes: {e}", error=str(e))

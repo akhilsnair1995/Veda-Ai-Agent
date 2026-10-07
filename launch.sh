@@ -2,7 +2,7 @@
 # Veda Launch Script
 # Activates virtual environment and starts the chatbot
 
-SCRIPT_DIR="/mnt/c/Users/akhil/veda_agent"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Ensure virtual environment exists

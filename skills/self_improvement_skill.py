@@ -43,12 +43,12 @@ Do not include placeholders.
         ]
         
         try:
-            response = brain.client.chat(
+            response = brain.client.chat.completions.create(
                 model=brain.model,
                 messages=messages,
-                options={"temperature": 0.2}
+                temperature=0.2
             )
-            content = response["message"]["content"]
+            content = response.choices[0].message.content
             
             # If the brain object has a create_skill method (as defined in PART 9), we can auto-save it!
             # Let's extract the python code.

@@ -48,11 +48,11 @@ IMPORTANT: Never present a single source's claim as established fact without cor
         ]
         
         try:
-            response = brain.client.chat(
+            response = brain.client.chat.completions.create(
                 model=brain.model,
                 messages=messages,
-                options={"temperature": 0.2}
+                temperature=0.2
             )
-            return SkillResult(success=True, output=response["message"]["content"])
+            return SkillResult(success=True, output=response.choices[0].message.content)
         except Exception as e:
             return SkillResult(success=False, output=f"Error during deep research: {e}", error=str(e))

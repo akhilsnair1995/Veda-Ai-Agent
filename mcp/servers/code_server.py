@@ -12,6 +12,27 @@ from mcp.server_base import MCPServer
 
 server = MCPServer(name="code", version="1.0.0")
 
+WORKSPACE_FILE = BASE_DIR / "config" / "current_workspace.txt"
+
+def _get_workspace() -> Path:
+    if WORKSPACE_FILE.exists():
+        try:
+            ws_path = WORKSPACE_FILE.read_text(encoding="utf-8").strip()
+            if ws_path:
+                p = Path(ws_path).expanduser().resolve()
+                if p.is_dir():
+                    return p
+        except Exception:
+            pass
+    env_ws = os.getenv("VEDA_WORKSPACE")
+    if env_ws:
+        p = Path(env_ws).expanduser().resolve()
+        if p.is_dir():
+            return p
+    default_ws = (BASE_DIR / "workspace").resolve()
+    default_ws.mkdir(parents=True, exist_ok=True)
+    return default_ws
+
 def run_python(code: str = None, timeout: int = 30, python_code: str = None, file_path: str = None, path: str = None, **kwargs) -> str:
     """Execute python code. Can take raw code or a path to a .py file."""
     code = code or python_code
@@ -23,9 +44,7 @@ def run_python(code: str = None, timeout: int = 30, python_code: str = None, fil
             # Check relative to workspace if not absolute
             p = Path(target_path).expanduser()
             if not p.is_absolute():
-                if not p.exists():
-                    workspace = Path("C:/Users/akhil/veda_agent/workspace")
-                    p = workspace / p
+                p = _get_workspace() / p
             
             if p.exists() and p.is_file():
                 code = p.read_text(encoding="utf-8")
@@ -54,7 +73,8 @@ def run_python(code: str = None, timeout: int = 30, python_code: str = None, fil
             [sys.executable, temp_path],
             capture_output=True,
             text=True,
-            timeout=timeout
+            timeout=timeout,
+            cwd=str(_get_workspace())
         )
         return f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
     except subprocess.TimeoutExpired:
@@ -84,7 +104,8 @@ def run_shell(command: str, timeout: int = 10, confirm: bool = True, **kwargs) -
             shell=(os.name != 'nt'),
             capture_output=True,
             text=True,
-            timeout=timeout
+            timeout=timeout,
+            cwd=str(_get_workspace())
         )
         return f"Exit Code: {result.returncode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
     except subprocess.TimeoutExpired:
