@@ -160,6 +160,14 @@ class MCPServerManager:
                     ],
                     "enabled": True,
                     "description": "Engineering calculations and physics"
+                },
+                "cad": {
+                    "command": [
+                        python_exec,
+                        str(BASE_DIR / "mcp/servers/cad_server.py")
+                    ],
+                    "enabled": True,
+                    "description": "CAD DXF generation, parsing, and rendering"
                 }
             }
         }
@@ -236,7 +244,13 @@ class MCPServerManager:
             "plot": "visualization__generate_chart",
             "calc": "simulation__calc_psychrometrics",
             "unzip": "filesystem__unzip_file",
-            "extract_zip": "filesystem__unzip_file"
+            "extract_zip": "filesystem__unzip_file",
+            "cad": "cad__generate_dxf_hvac_layout",
+            "dxf": "cad__parse_dxf_drawing",
+            "render_pdf": "document__render_pdf_page_to_image",
+            "pdf_to_image": "document__render_pdf_page_to_image",
+            "pdf_tables": "document__extract_pdf_tables",
+            "tables": "document__extract_pdf_tables"
         }
         
         target_tool = tool_name.lower().strip()
@@ -287,8 +301,38 @@ class MCPServerManager:
             return f"MCP tool error ({target_tool}): {e}"
 
     def get_all_tool_schemas(self) -> list[dict]:
-        """Return schemas for all available tools across all servers."""
-        return list(self.all_tools.values())
+        """Return unique schemas for all available tools across all servers."""
+        seen = set()
+        unique = []
+        for name, tool in self.all_tools.items():
+            tool_name = tool.get("name")
+            if tool_name and tool_name not in seen:
+                seen.add(tool_name)
+                unique.append(tool)
+        return unique
+
+    def get_formatted_tool_guide(self) -> str:
+        """Format tools with names, descriptions, and complete parameter specifications."""
+        tools = self.get_all_tool_schemas()
+        lines = []
+        for t in sorted(tools, key=lambda x: x.get("name", "")):
+            name = t.get("name", "")
+            desc = t.get("description", "")
+            schema = t.get("inputSchema", {})
+            props = schema.get("properties", {})
+            required = schema.get("required", [])
+            param_parts = []
+            for p_name, p_info in props.items():
+                p_type = p_info.get("type", "string")
+                req_str = " (REQUIRED)" if p_name in required else " (optional)"
+                p_desc = f" - {p_info.get('description', '')}" if p_info.get('description') else ""
+                param_parts.append(f"    * {p_name} ({p_type}{req_str}){p_desc}")
+            
+            tool_block = f"- TOOL: {name}\n  Description: {desc}"
+            if param_parts:
+                tool_block += "\n  Parameters:\n" + "\n".join(param_parts)
+            lines.append(tool_block)
+        return "\n\n".join(lines)
 
     def add_server(self, 
                    name: str, 
